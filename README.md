@@ -14,6 +14,22 @@ Este proyecto es un renderizador 3D básico en Rust que carga modelos .obj expor
 - Controles en tiempo real con el teclado
 - Uso de un framebuffer para dibujar manualmente los triángulos
 
-📸 ## Captura de pantalla
+## 📸 Captura de pantalla
 
 <img width="1918" height="1012" alt="image" src="https://github.com/user-attachments/assets/b11efbee-ac87-41ea-b64e-144a099b42b3" />
+
+## 🛠️ Requisitos
+- Rust
+- raylib-rs
+
+## 🔧 Instalación y ejecución
+
+1. Clona este repositorio
+2. Compila y ejecuta:
+
+    ```bash
+    cargo run
+    ```
+
+
+
