@@ -1,154 +1,160 @@
 // main.rs
-
 mod framebuffer;
-mod line;
 mod triangle;
+mod line;
+mod vertex;
+mod fragment;
+mod shaders;
 mod obj;
+mod matrix;
+mod camera;
+mod light;
 
-use obj::Obj;
-use triangle::triangle;
+use matrix::{create_model_matrix, create_projection_matrix, create_viewport_matrix};
+use camera::Camera;
+use light::Light;
 use framebuffer::Framebuffer;
+use vertex::Vertex;
+use triangle::triangle;
+use shaders::{vertex_shader, fragment_shader};
+use obj::Obj;
 use raylib::prelude::*;
 use std::thread;
 use std::time::Duration;
 use std::f32::consts::PI;
 
 
-fn transform(vertex: Vector3, translation: Vector2, scale: f32, rotation: Vector3) -> Vector3 {
-
-    
-    let (sin_x, cos_x) = (rotation.x * PI / 180.0).sin_cos();
-    let (sin_y, cos_y) = (rotation.y * PI / 180.0).sin_cos();
-    let (sin_z, cos_z) = (rotation.z * PI / 180.0).sin_cos();
-
-    let mut new_vertex = vertex;
-
-    // Rotate X
-    let rotated_y = new_vertex.y * cos_x - new_vertex.z * sin_x;
-    let rotated_z = new_vertex.y * sin_x + new_vertex.z * cos_x;
-    new_vertex.y = rotated_y;
-    new_vertex.z = rotated_z;
-
-    // Rotate Y
-    let rotated_x = new_vertex.x * cos_y + new_vertex.z * sin_y;
-    let rotated_z = -new_vertex.x * sin_y + new_vertex.z * cos_y;
-    new_vertex.x = rotated_x;
-    new_vertex.z = rotated_z;
-
-    // Rotate Z
-    let rotated_x = new_vertex.x * cos_z - new_vertex.y * sin_z;
-    let rotated_y = new_vertex.x * sin_z + new_vertex.y * cos_z;
-    new_vertex.x = rotated_x;
-    new_vertex.y = rotated_y;
-
-    new_vertex.x = rotated_x;
-    new_vertex.y = rotated_y;
-
-    new_vertex.x *= scale;
-    new_vertex.y *= scale;
-
-
-    new_vertex.x += translation.x;
-    new_vertex.y += translation.y;
-
-    new_vertex
+pub struct Uniforms {
+    pub model_matrix: Matrix,
+    pub view_matrix: Matrix,
+    pub projection_matrix: Matrix,
+    pub viewport_matrix: Matrix,
 }
 
-fn render(framebuffer: &mut Framebuffer, translation:Vector2, scale: f32, rotation: Vector3, vertex_array: &[Vector3]) {
-    // recorrer el array y transformar
-
+fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Vertex], light: &Light) {
+    // Vertex Shader Stage
     let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
     for vertex in vertex_array {
-        let transformed = transform(vertex.clone(), translation, scale, rotation);
+        let transformed = vertex_shader(vertex, uniforms);
         transformed_vertices.push(transformed);
     }
 
-    for i in (0..transformed_vertices.len()).step_by(3){
-        if i + 2 < transformed_vertices.len(){
-            triangle(framebuffer, transformed_vertices[i], transformed_vertices[i+1], transformed_vertices[i+2]);
+    // Primitive Assembly Stage
+    let mut triangles = Vec::new();
+    for i in (0..transformed_vertices.len()).step_by(3) {
+        if i + 2 < transformed_vertices.len() {
+            triangles.push([
+                transformed_vertices[i].clone(),
+                transformed_vertices[i + 1].clone(),
+                transformed_vertices[i + 2].clone(),
+            ]);
         }
     }
-    
+
+    // Rasterization Stage
+    let mut fragments = Vec::new();
+    for tri in &triangles {
+        fragments.extend(triangle(&tri[0], &tri[1], &tri[2], light));
+    }
+
+    // Fragment Processing Stage
+    for fragment in fragments {
+        // Verificar que el fragment esté dentro de los límites del framebuffer
+        // if fragment.position.x >= 0.0 && fragment.position.x < framebuffer.width as f32 &&
+        //    fragment.position.y >= 0.0 && fragment.position.y < framebuffer.height as f32 {
+            
+        //let color = shaders::fragment_shader_paper(&fragment);
+        let final_color = fragment_shader(&fragment, uniforms);
+        framebuffer.point(
+            fragment.position.x as i32,
+            fragment.position.y as i32,
+            final_color, 
+            fragment.depth,
+
+        );
+        //}
+    }
 }
 
 fn main() {
-    let window_width = 1900;
-    let window_height = 1200;
+    let window_width = 1300;
+    let window_height = 900;
 
     let (mut window, raylib_thread) = raylib::init()
         .size(window_width, window_height)
-        .title("Barco :D")
+        .title("Barco de papel :D")
         .log_level(TraceLogLevel::LOG_WARNING)
         .build();
 
-    let mut framebuffer = Framebuffer::new(window_width as i32, window_height as i32,  Color::new(81, 25, 107, 255),);
-    let mut translation = Vector2::new(800.0, 600.0);
-    let mut scale = 100.0;
-    let mut rotation = Vector3:: new(0.0, 0.0, 0.0);
+    let mut framebuffer = Framebuffer::new(window_width as u32, window_height as u32);
+    framebuffer.set_background_color(Vector3::new(0.2,0.2,0.4)); //azul oscuro
 
-    let obj = Obj::load("Models/barco.obj").expect("No cargó unu");
+    framebuffer.init_texture(&mut window, &raylib_thread);
+
+    let camera_position = Vector3::new(0.0, 1.0, 5.0);
+    let camera_target = Vector3::new(0.0, 0.0, 0.0);
+    let camera_up = Vector3::new(0.0, 1.0, 0.0);
+    // Inicializar cámara
+    let mut camera = Camera::new(
+        camera_position,
+        camera_target,
+        camera_up
+    );
+
+    let fov_y = PI / 3.0;
+    let aspect = window_width as f32 / window_height as f32;
+    let near = 0.1;
+    let far = 100.0;
+
+    // Parámetros de transformación del modelo (fijos)
+    let translation = Vector3::new(0.0, 0.0, 0.0);
+    let mut rotation_y = 0.0f32;
+    let rotation_speed = 0.0f32;
+    let scale = 1.0f32;
+      // Light
+
+    let light = Light::new(Vector3::new(5.0, 5.0, 5.0));
+
+    let obj = Obj::load("./Models/barcoPapel.obj").expect("Failed to load obj");
+    
+    // vertex_array ya es Vec<Vertex> gracias a los cambios en obj.rs
     let vertex_array = obj.get_vertex_array();
 
-    framebuffer.set_background_color(Color::new(81, 25, 107,255));
-
     while !window.window_should_close() {
+        camera.process_input(&window);
+
+        rotation_y += rotation_speed;
+        
         framebuffer.clear();
-        framebuffer.set_current_color(Color::new(200, 200, 255, 255));
 
-        if window.is_key_down(KeyboardKey::KEY_RIGHT) {
-            translation.x += 10.0;
-        }
+        let rotation = Vector3::new(0.0, rotation_y, 0.0);
+        // Crear matrices de transformación
+        let model_matrix = create_model_matrix (translation, scale, rotation);
+        let view_matrix = camera.get_view_matrix();
+        let projection_matrix = create_projection_matrix(fov_y, aspect, near, far);
+        let viewport_matrix = create_viewport_matrix(0.0, 0.0, window_width as f32, window_height as f32);
 
-        if window.is_key_down(KeyboardKey::KEY_LEFT) {
-            translation.x -= 10.0;
-        }
+        // Crear uniforms
+        let uniforms = Uniforms {
+            model_matrix,
+            view_matrix,
+            projection_matrix,
+            viewport_matrix,
+        };
 
-        if window.is_key_down(KeyboardKey::KEY_UP) {
-            translation.y -= 10.0;
-        }
-        
-        if window.is_key_down(KeyboardKey::KEY_DOWN) {
-            translation.y += 10.0;
-        }
+        render(&mut framebuffer, &uniforms, &vertex_array, &light);
 
-        
-        if window.is_key_down(KeyboardKey::KEY_S) {
-           scale *= 1.1;
-        }
-
-        if window.is_key_down(KeyboardKey::KEY_A) {
-           scale *= 0.9;
-        }
-
-        if window.is_key_down(KeyboardKey::KEY_Q) {
-           rotation.x += 10.0;
-        }
-
-        if window.is_key_down(KeyboardKey::KEY_W) {
-           rotation.x -= 10.0;
-        }
-
-        if window.is_key_down(KeyboardKey::KEY_E) {
-           rotation.y += 10.0;
-        }
-
-        if window.is_key_down(KeyboardKey::KEY_R) {
-           rotation.y -= 10.0;
-        }
-
-        if window.is_key_down(KeyboardKey::KEY_T) {
-           rotation.z += 10.0;
-        }
-
-        if window.is_key_down(KeyboardKey::KEY_Y) {
-           rotation.z -= 10.0;
-        }
-
-      
-
-        render(&mut framebuffer, translation, scale, rotation, &vertex_array);
         framebuffer.swap_buffers(&mut window, &raylib_thread);
 
+        let mut d = window.begin_drawing(&raylib_thread);
+        let center_x = window_width / 2;
+        let center_y = window_height / 2;
+        let crosshair_size = 10;
+
+        d.draw_line(center_x - crosshair_size, center_y, center_x + crosshair_size, center_y, Color::WHITE);
+        d.draw_line(center_x, center_y - crosshair_size, center_x, center_y + crosshair_size, Color::WHITE);
+
+        
         thread::sleep(Duration::from_millis(16));
     }
 }

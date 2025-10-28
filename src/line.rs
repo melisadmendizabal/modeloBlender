@@ -1,13 +1,12 @@
-// line.rs
-
 use raylib::prelude::*;
-use crate::framebuffer::Framebuffer;
+use crate::fragment::Fragment; // Asegúrate de que el módulo `fragments` esté correctamente importado
 
 pub fn line(
-    framebuffer: &mut Framebuffer,
     start: Vector2,
     end: Vector2,
-) {
+) -> Vec<Fragment> {
+    let mut fragments = Vec::new();
+
     let mut x0 = start.x as i32;
     let mut y0 = start.y as i32;
     let x1 = end.x as i32;
@@ -20,17 +19,19 @@ pub fn line(
     let mut err = dx + dy;
 
     loop {
-        if x0 >= 0
-            && y0 >= 0
-            && (x0 as u32) < framebuffer.width.try_into().unwrap()
-            && (y0 as u32) < framebuffer.height.try_into().unwrap()
-        {
-            framebuffer.set_pixel((x0 as u32).try_into().unwrap(), (y0 as u32).try_into().unwrap());
-        }
+        // Creamos un fragmento en lugar de escribir en el framebuffer
+        let fragment = Fragment::new(
+            x0 as f32,
+            y0 as f32,
+            Vector3::new(1.0, 1.0, 1.0), // color blanco
+            0.0, // profundidad por defecto
+        );
+        fragments.push(fragment);
 
         if x0 == x1 && y0 == y1 {
             break;
         }
+
         let e2 = 2 * err;
         if e2 >= dy {
             err += dy;
@@ -41,4 +42,6 @@ pub fn line(
             y0 += sy;
         }
     }
+
+    fragments
 }
