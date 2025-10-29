@@ -93,17 +93,22 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, light: &Light) -> Vec<Fra
 
     let min_y = v1.transformed_position.y.min(v2.transformed_position.y).min(v3.transformed_position.y).floor() as i32;
     let max_y = v1.transformed_position.y.max(v2.transformed_position.y).max(v3.transformed_position.y).ceil() as i32;
+    //AAAAAAAAAAAAAAAAAAAAAA
+    // let a_x = v1.transformed_position.x;
+    // let b_x = v2.transformed_position.x;
+    // let c_x = v3.transformed_position.x;
+    // let a_y = v1.transformed_position.y;
+    // let b_y = v2.transformed_position.y;
+    // let c_y = v3.transformed_position.y;
 
-    let a_x = v1.transformed_position.x;
-    let b_x = v2.transformed_position.x;
-    let c_x = v3.transformed_position.x;
-    let a_y = v1.transformed_position.y;
-    let b_y = v2.transformed_position.y;
-    let c_y = v3.transformed_position.y;
+    // fragments.extend(line(Vector3::new(a_x, a_y, v1.transformed_position.z), Vector3::new(b_x, b_y, v2.transformed_position.z)));
+    // fragments.extend(line(Vector3::new(b_x, b_y, v2.transformed_position.z), Vector3::new(c_x, c_y, v3.transformed_position.z)));
+    // fragments.extend(line(Vector3::new(c_x, c_y, v3.transformed_position.z), Vector3::new(a_x, a_y, v1.transformed_position.z)));
 
-    fragments.extend(line(Vector2::new(a_x, a_y), Vector2::new(b_x, b_y)));
-    fragments.extend(line(Vector2::new(b_x, b_y), Vector2::new(c_x, c_y)));
-    fragments.extend(line(Vector2::new(c_x, c_y), Vector2::new(a_x, a_y)));
+    // fragments.extend(line(Vector2::new(a_x, a_y), Vector2::new(b_x, b_y)));
+    // fragments.extend(line(Vector2::new(b_x, b_y), Vector2::new(c_x, c_y)));
+    // fragments.extend(line(Vector2::new(c_x, c_y), Vector2::new(a_x, a_y)));
+   
    
 
 /*     let color_a = Vector3::new(1.0, 0.0, 0.0);
@@ -125,9 +130,23 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, light: &Light) -> Vec<Fra
 
             if w1 >= 0.0 && w2 >= 0.0 && w3 >= 0.0 {
 
-                let interpolated_normal = (v1.transformed_normal * w1)
-                    + (v2.transformed_normal * w2)
-                    + (v3.transformed_normal * w3);
+                // perspectiva corregida para normales:
+                let w1_div = w1 / v1.w;
+                let w2_div = w2 / v2.w;
+                let w3_div = w3 / v3.w;
+
+                let denom = w1_div + w2_div + w3_div;
+                let w1_corr = w1_div / denom;
+                let w2_corr = w2_div / denom;
+                let w3_corr = w3_div / denom;
+
+                let interpolated_normal = (v1.transformed_normal * w1_corr)
+                    + (v2.transformed_normal * w2_corr)
+                    + (v3.transformed_normal * w3_corr);
+
+                // let interpolated_normal = (v1.transformed_normal * w1)
+                //     + (v2.transformed_normal * w2)
+                //     + (v3.transformed_normal * w3);
 
                 // Normalizar usando la función integrada
                 let normalized_normal = interpolated_normal.normalized();
@@ -163,7 +182,18 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, light: &Light) -> Vec<Fra
                 let depth = w1 * v1.transformed_position.z
                           + w2 * v2.transformed_position.z
                           + w3 * v3.transformed_position.z;
-                fragments.push(Fragment::new(p_x, p_y, shaded_color, depth, normalized_normal));
+
+                let edge1 = v2.position - v1.position;
+                let edge2 = v3.position - v1.position;
+                let mut face_normal = edge1.cross(edge2);
+                face_normal.normalize();
+
+                // calcula intensidad con face normal
+                let light_dir_world = (light.position - world_pos).normalized();
+                let face_intensity = face_normal.dot(light_dir_world).max(0.0);
+
+                fragments.push(Fragment::new(p_x, p_y, Vector3::new(face_intensity, face_intensity, face_intensity), depth, face_normal));
+
             }
 
         }

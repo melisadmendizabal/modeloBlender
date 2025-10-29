@@ -5,15 +5,6 @@ use crate::Uniforms;
 use crate::fragment::Fragment;
 use crate::matrix::multiply_matrix_vector4;
 
-// This function manually multiplies a 4x4 matrix with a 4D vector (in homogeneous coordinates)
-// fn multiply_matrix_vector4(matrix: &Matrix, vector: &Vector4) -> Vector4 {
-//     Vector4::new(
-//         matrix.m0 * vector.x + matrix.m4 * vector.y + matrix.m8 * vector.z + matrix.m12 * vector.w,
-//         matrix.m1 * vector.x + matrix.m5 * vector.y + matrix.m9 * vector.z + matrix.m13 * vector.w,
-//         matrix.m2 * vector.x + matrix.m6 * vector.y + matrix.m10 * vector.z + matrix.m14 * vector.w,
-//         matrix.m3 * vector.x + matrix.m7 * vector.y + matrix.m11 * vector.z + matrix.m15 * vector.w,
-//     )
-// }
 
 pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
   // Convert vertex position to homogeneous coordinates (Vec4) by adding a w-component of 1.0
@@ -32,6 +23,12 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
 
   // Apply Projection transformation (perspective)
   let clip_position = multiply_matrix_vector4(&uniforms.projection_matrix, &view_position);
+  let clip_w = clip_position.w;
+    let ndc = if clip_w != 0.0 {
+        Vector3::new(clip_position.x / clip_w, clip_position.y / clip_w, clip_position.z / clip_w)
+    } else {
+        Vector3::new(clip_position.x, clip_position.y, clip_position.z)
+    };
 
   // Perform perspective division to get NDC (Normalized Device Coordinates)
   let ndc = if clip_position.w != 0.0 {
@@ -54,6 +51,8 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
       screen_position.z,
   );
 
+  
+
   // Create a new Vertex with the transformed position
   Vertex {
     position: vertex.position,
@@ -62,23 +61,20 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     color: vertex.color,
     transformed_position,
     transformed_normal: transform_normal(&vertex.normal, &uniforms.model_matrix), // Note: Correct normal transformation is more complex
+    w: clip_w,
   }
 }
 
 fn transform_normal(normal: &Vector3, model_matrix: &Matrix) -> Vector3 {
-    let normal_vec4 = Vector4::new(normal.x, normal.y, normal.z, 1.0 );
+    let normal_vec4 = Vector4::new(normal.x, normal.y, normal.z, 0.0);
 
-    let transformed_normal_vec4 = multiply_matrix_vector4(model_matrix, &normal_vec4);
-
-    let mut transformed_normal = Vector3::new(
-        transformed_normal_vec4.x,
-        transformed_normal_vec4.y,
-        transformed_normal_vec4.z,
-    );
-
-    transformed_normal.normalize();
-    transformed_normal
+    // si no hay escala no uniforme, basta con esto:
+    let transformed = multiply_matrix_vector4(model_matrix, &normal_vec4);
+    let mut n = Vector3::new(transformed.x, transformed.y, transformed.z);
+    n.normalize();
+    n
 }
+
 
 
  /// Patrón tipo papel aplicado a fragmentos
@@ -104,18 +100,34 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
 
     let mut light_dir = Vector3::new(0.0, 0.0, 1.0); // dirección de la luz
     light_dir.normalize();
+
     let mut normal = fragment.normal;
     normal.normalize(); 
-    let intensity = normal.dot(light_dir).max(0.0);
-    let shaded_color = fragment.color * intensity;
 
+    let mut intensity = normal.dot(light_dir).max(0.0);
+    intensity = intensity.max(0.0);
+    let mut shaded_color = fragment.color * intensity;
+    shaded_color.x = shaded_color.x.min(255.0).max(0.0);
+    shaded_color.y = shaded_color.y.min(255.0).max(0.0);
+    shaded_color.z = shaded_color.z.min(255.0).max(0.0);
+
+    let mut a = color * intensity;
+
+    a
 
     // Opcional: shading de luz simple sobre el papel, si carga la textura pero con cuadro negros
     // let intensity = (fragment.normal.dot(Vector3::new(0.0, 0.0, 1.0))).max(0.0);
-    // color * intensity
+    //color * intensity
 
     //esto no soluciona los cuadros negros o mal transparentados y no carga la textura se mira gris
     // let shaded_color = fragment.color * intensity;
-    color * intensity
+    //shaded_color
+    //color
+    //return (fragment.normal * 0.5) + Vector3::new(0.5, 0.5, 0.5);
+    //return Vector3::new(intensity, intensity, intensity);
+    
+    //light_dir
+
+    //el problema es con la normal no importa si está normalizada
     
 }

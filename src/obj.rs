@@ -20,6 +20,7 @@ impl Obj {
             let num_vertices = mesh.positions.len() / 3;
 
             for i in 0..num_vertices {
+                
                 let x = mesh.positions[i * 3];
                 let y = mesh.positions[i * 3 + 1];
                 let z = mesh.positions[i * 3 + 2];
@@ -43,6 +44,11 @@ impl Obj {
                 };
 
                 vertices.push(Vertex::new(position, normal, tex_coords));
+
+                // if i < 20 {
+                //     println!("vertex {} pos=({:.3},{:.3},{:.3}) normal=({:.3},{:.3},{:.3})",
+                //         i, x, y, z, normal.x, normal.y, normal.z);
+                // }
             }
             indices.extend_from_slice(&mesh.indices);
         }

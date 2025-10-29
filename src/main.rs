@@ -117,6 +117,8 @@ fn main() {
 
     //let obj = Obj::load("./Models/barcoPapel.obj").expect("Failed to load obj");
     let obj = Obj::load("./Models/cuboo.obj").expect("Failed to load obj");
+    //let obj = Obj::load("./Models/sphere.obj").expect("Failed to load obj");
+
     // vertex_array ya es Vec<Vertex> gracias a los cambios en obj.rs
     let vertex_array = obj.get_vertex_array();
 

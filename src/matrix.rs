@@ -168,14 +168,19 @@ pub fn create_projection_matrix(fov_y: f32, aspect: f32, near: f32, far: f32) ->
 /// Creates a viewport matrix to transform NDC coordinates to screen space
 /// x, y: Viewport position (typically 0, 0)
 /// width, height: Viewport dimensions in pixels
+/// Creates a viewport matrix to transform NDC coordinates to screen space
+/// x, y: Viewport position (typically 0, 0)
+/// width, height: Viewport dimensions in pixels
 pub fn create_viewport_matrix(x: f32, y: f32, width: f32, height: f32) -> Matrix {
     let half_width = width / 2.0;
     let half_height = height / 2.0;
 
+    // Note: third row maps NDC z [-1,1] or [..] to depth range [0,1].
+    // We use z' = ndc.z * 0.5 + 0.5 -> maps [-1,1] -> [0,1]
     new_matrix4(
-        half_width, 0.0, 0.0, x + half_width,
-        0.0, -half_height, 0.0, y + half_height,
-        0.0, 0.0, 255.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
+        half_width, 0.0,         0.0,  x + half_width,   // row 0
+        0.0,       -half_height, 0.0,  y + half_height,  // row 1 (y flipped)
+        0.0,        0.0,         0.5,  0.5,              // row 2 -> z * 0.5 + 0.5
+        0.0,        0.0,         0.0,  1.0,
     )
 }
