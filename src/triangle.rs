@@ -5,7 +5,7 @@ use crate::Vector3;
 use crate::light::Light;
 use crate::Vector2;
 use crate::line::line;
-use raylib::prelude::*;
+//use raylib::prelude::*;
 
 // fn barycentric_coordinates(p_x: f32, p_y: f32, a: &Vertex, b: &Vertex, c: &Vertex)  -> (f32, f32, f32) {
 //     let a_x = a.transformed_position.x;   
@@ -140,7 +140,7 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, light: &Light) -> Vec<Fra
                 );
 
                 // Direccion de la luz para este fragmento
-                let mut light_dir = Vector3::new(
+                let light_dir = Vector3::new(
                     light.position.x - world_pos.x,
                     light.position.y - world_pos.y,
                     light.position.z - world_pos.z,
@@ -163,7 +163,7 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, light: &Light) -> Vec<Fra
                 let depth = w1 * v1.transformed_position.z
                           + w2 * v2.transformed_position.z
                           + w3 * v3.transformed_position.z;
-                fragments.push(Fragment::new(p_x, p_y, shaded_color, depth));
+                fragments.push(Fragment::new(p_x, p_y, shaded_color, depth, normalized_normal));
             }
 
         }

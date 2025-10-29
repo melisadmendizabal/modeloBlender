@@ -25,6 +25,7 @@ pub fn line(
             y0 as f32,
             Vector3::new(1.0, 1.0, 1.0), // color blanco
             0.0, // profundidad por defecto
+            Vector3::new(0.0, 0.0, 1.0)
         );
         fragments.push(fragment);
 

@@ -83,23 +83,39 @@ fn transform_normal(normal: &Vector3, model_matrix: &Matrix) -> Vector3 {
 
  /// Patrón tipo papel aplicado a fragmentos
 pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
-    let color = Vector3::new(1.0, 0.0, 0.0);
-    // let y = fragment.position.y;
+    let base_color = Vector3::new(1.0, 1.0, 0.8); // beige claro
 
-    // // Configuración del patrón
-    // let line_spacing = 20.0;      // separación entre líneas
-    // let thick_line_width = 4.0;   // grosor línea blanca
-    // let thin_line_width = 1.0;    // grosor línea azul
+    // Configuración de las líneas del papel
+    let line_spacing = 20.0;     // separación entre líneas
+    let thick_line_width = 2.0;  // grosor de la línea "sombreada"
+    let thin_line_width = 1.0;   // grosor de la línea fina, opcional
 
-    // let mod_y = y % line_spacing;
+    // Tomamos la coordenada Y del fragmento para el patrón
+    let mod_y = fragment.position.y % line_spacing;
 
-    // let color = if mod_y < thick_line_width {
-    //     Vector3::new(1.0, 1.0, 1.0) // línea blanca gruesa
-    // } else if mod_y > line_spacing - thin_line_width {
-    //     Vector3::new(0.0, 0.0, 1.0) // línea azul fina
-    // } else {
-    //     Vector3::new(1.0, 1.0, 0.8) // fondo papel
-    // };
+    // Determinar el color según la línea
+    let color = if mod_y < thick_line_width {
+        Vector3::new(0.9, 0.9, 0.9) // línea blanca gruesa
+    } else if mod_y > line_spacing - thin_line_width {
+        Vector3::new(0.8, 0.8, 1.0) // línea azul fina opcional
+    } else {
+        base_color // fondo de papel
+    };
 
-    color
+    let mut light_dir = Vector3::new(0.0, 0.0, 1.0); // dirección de la luz
+    light_dir.normalize();
+    let mut normal = fragment.normal;
+    normal.normalize(); 
+    let intensity = normal.dot(light_dir).max(0.0);
+    let shaded_color = fragment.color * intensity;
+
+
+    // Opcional: shading de luz simple sobre el papel, si carga la textura pero con cuadro negros
+    // let intensity = (fragment.normal.dot(Vector3::new(0.0, 0.0, 1.0))).max(0.0);
+    // color * intensity
+
+    //esto no soluciona los cuadros negros o mal transparentados y no carga la textura se mira gris
+    // let shaded_color = fragment.color * intensity;
+    color * intensity
+    
 }
