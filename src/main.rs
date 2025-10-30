@@ -29,6 +29,8 @@ pub struct Uniforms {
     pub view_matrix: Matrix,
     pub projection_matrix: Matrix,
     pub viewport_matrix: Matrix,
+    pub time: f32,
+    pub shader_mode: i32,
 }
 
 fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Vertex], light: &Light) {
@@ -76,6 +78,15 @@ fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Ve
     }
 }
 
+fn get_current_time_seconds() -> f32 {
+    use std::time::SystemTime;
+    let start = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap();
+    start.as_secs_f32()
+}
+
+
 fn main() {
     let window_width = 1300;
     let window_height = 900;
@@ -115,12 +126,26 @@ fn main() {
 
     let light = Light::new(Vector3::new(5.0, 5.0, 5.0));
 
-    //let obj = Obj::load("./Models/barcoPapel.obj").expect("Failed to load obj");
-    let obj = Obj::load("./Models/cuboo.obj").expect("Failed to load obj");
-    //let obj = Obj::load("./Models/sphere.obj").expect("Failed to load obj");
+    //let obj = Obj::load("./Models/barco.obj").expect("Failed to load obj");
+    //let obj = Obj::load("./Models/cuboo.obj").expect("Failed to load obj");
+    let obj = Obj::load("./Models/sphere.obj").expect("Failed to load obj");
+
+  
 
     // vertex_array ya es Vec<Vertex> gracias a los cambios en obj.rs
     let vertex_array = obj.get_vertex_array();
+
+    //menu de los shaders
+    let mut current_shader = 0;
+    let mut uniforms = Uniforms {
+        model_matrix: Matrix::identity(),
+        view_matrix: Matrix::identity(),
+        projection_matrix: Matrix::identity(),
+        viewport_matrix: Matrix::identity(),
+        time: 0.0,
+        shader_mode: 0,
+    };
+
 
     while !window.window_should_close() {
         camera.process_input(&window);
@@ -137,24 +162,70 @@ fn main() {
         let viewport_matrix = create_viewport_matrix(0.0, 0.0, window_width as f32, window_height as f32);
 
         // Crear uniforms
-        let uniforms = Uniforms {
-            model_matrix,
-            view_matrix,
-            projection_matrix,
-            viewport_matrix,
-        };
+        uniforms.model_matrix = model_matrix;
+        uniforms.view_matrix = view_matrix;
+        uniforms.projection_matrix = projection_matrix;
+        uniforms.viewport_matrix = viewport_matrix;
+
+
+        if window.is_key_pressed(KeyboardKey::KEY_ONE) {
+            current_shader = 1;
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_TWO) {
+            current_shader = 2;
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_THREE) {
+            current_shader = 3;
+        }
+
+        // Actualizar uniforms
+        uniforms.time = get_current_time_seconds();
+        uniforms.shader_mode = current_shader;
 
         render(&mut framebuffer, &uniforms, &vertex_array, &light);
 
         framebuffer.swap_buffers(&mut window, &raylib_thread);
 
         let mut d = window.begin_drawing(&raylib_thread);
+
+        // Dibujar un menú visual simple
+        let options = ["1. 🪨 Planeta rocoso", "2. ☁️ Gigante gaseoso", "3. 🪐 Planeta personalizado"];
+        let start_y = 60;
+        for (i, &option) in options.iter().enumerate() {
+            let y = start_y + i as i32 * 25;
+            let color = if i as i32 + 1 == current_shader {
+                Color::YELLOW // resalta el shader activo
+            } else {
+                Color::RAYWHITE
+            };
+            d.draw_text(option, 20, y, 20, color);
+        }
+
+
         let center_x = window_width / 2;
         let center_y = window_height / 2;
         let crosshair_size = 10;
 
         d.draw_line(center_x - crosshair_size, center_y, center_x + crosshair_size, center_y, Color::WHITE);
         d.draw_line(center_x, center_y - crosshair_size, center_x, center_y + crosshair_size, Color::WHITE);
+
+        //implementacion del menu
+        // Mostrar el shader activo en pantalla
+        let shader_name = match current_shader {
+            1 => "🪨 Planeta rocoso",
+            2 => "☁️ Gigante gaseoso",
+            3 => "🪐 Planeta personalizado",
+            _ => "Shader desconocido",
+        };
+
+        d.draw_text(
+            &format!("Shader actual: {}", shader_name),
+            20,     // posición X
+            20,     // posición Y
+            20,     // tamaño de fuente
+            Color::WHITE,
+        );
+
 
         
         thread::sleep(Duration::from_millis(16));

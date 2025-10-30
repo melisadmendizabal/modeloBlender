@@ -5,8 +5,54 @@ use crate::Uniforms;
 use crate::fragment::Fragment;
 use crate::matrix::multiply_matrix_vector4;
 
+pub fn fragment_shader_anillo(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+    let base_color = Vector3::new(0.8, 0.7, 0.5); // color principal del anillo
+    let band_color = Vector3::new(1.0, 1.0, 1.0); // bandas más claras
+
+    // Coordenadas polares del fragmento (relativo al centro del planeta)
+    let radius = (fragment.position.x * fragment.position.x + fragment.position.y * fragment.position.y).sqrt();
+    let angle = fragment.position.y.atan2(fragment.position.x);
+
+    // Simulación de relieve: altura aparente
+    let bump = (radius * 20.0 + uniforms.time * 2.0).sin() * 0.1; 
+    // opcional: más ruido con angle:
+    let bump = bump + (angle * 10.0).sin() * 0.05;
+
+    // Modificar la normal para simular la luz sobre relieve
+    let mut normal = fragment.normal;
+    normal.y += bump; // elevar la normal según el bump
+    normal.normalize();
+
+    // Patrón de bandas
+    let band = ((radius * 15.0).sin() * 0.5 + 0.5).powf(2.0);
+    let color = base_color * (1.0 - band) + band_color * band;
+
+    // Luz direccional
+    let light_dir = Vector3::new(0.0, 0.0, 1.0);
+    let intensity = normal.dot(light_dir).max(0.0);
+
+    color * intensity
+}
+
+
 
 pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
+
+
+    let mut position = vertex.position;
+
+    // 🌕 Si es Saturno (modo 2), deformar para anillos
+  if uniforms.shader_mode == 2 {
+    let radius = (position.x * position.x + position.z * position.z).sqrt();
+    if radius > 0.4 && radius < 0.8 {
+        // aplicar una función senoidal para hacer varias franjas
+        let factor = ((radius - 0.4) * 20.0).sin() * 0.05; 
+        position.y *= factor;
+    }
+}
+
+
+
   // Convert vertex position to homogeneous coordinates (Vec4) by adding a w-component of 1.0
   let position_vec4 = Vector4::new(
     vertex.position.x,
@@ -55,7 +101,7 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
 
   // Create a new Vertex with the transformed position
   Vertex {
-    position: vertex.position,
+    position,
     normal: vertex.normal,
     tex_coords: vertex.tex_coords,
     color: vertex.color,
@@ -78,7 +124,7 @@ fn transform_normal(normal: &Vector3, model_matrix: &Matrix) -> Vector3 {
 
 
  /// Patrón tipo papel aplicado a fragmentos
-pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+pub fn fragment_shader_papel(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
     let base_color = Vector3::new(1.0, 1.0, 0.8); // beige claro
 
     // Configuración de las líneas del papel
@@ -131,3 +177,69 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
     //el problema es con la normal no importa si está normalizada
     
 }
+
+
+pub fn fragment_shader_rocoso(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+    // color base tipo roca
+    let base_blue = Vector3::new(0.2, 0.4, 0.8);
+    let green = Vector3::new(0.1, 0.6, 0.2);
+    let clouds = Vector3::new(1.0, 1.0, 1.0);
+
+    // Patrón senoidal para “bandas” tipo nubes
+    let band = ((fragment.position.y * 10.0 + uniforms.time * 2.0).sin() * 0.5 + 0.5).powf(2.0);
+
+    // Mezcla colores
+    let color = base_blue * (1.0 - band) + green * 0.3 + clouds * band * 0.6;
+
+    // Luz
+    let light_dir = Vector3::new(0.0, 0.0, 1.0);
+    let intensity = fragment.normal.dot(light_dir).max(0.0);
+
+    color * intensity
+}
+
+pub fn fragment_shader_gaseoso(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+    // efecto ondulado o variable con el tiempo
+    let base_red = Vector3::new(0.8, 0.3, 0.1);
+    let darker = Vector3::new(0.5, 0.2, 0.1);
+
+    // Rugosidad con seno y coseno
+    let roughness = ((fragment.position.x * 8.0 + uniforms.time).sin()
+        * (fragment.position.y * 5.0).cos())
+        .abs();
+
+    let color = base_red * (1.0 - roughness) + darker * roughness * 0.7;
+
+    let light_dir = Vector3::new(0.0, 0.0, 1.0);
+    let intensity = fragment.normal.dot(light_dir).max(0.0);
+
+    color * intensity
+}
+
+pub fn fragment_shader_personalizado(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+    let base = Vector3::new(0.9, 0.8, 0.6);
+    let bands = ((fragment.position.y * 12.0).sin() * 0.5 + 0.5).powf(1.5);
+    let ring_color = Vector3::new(0.8, 0.7, 0.5);
+
+    let mut color = base * (1.0 - bands) + ring_color * bands * 0.7;
+
+    // Luz direccional
+    let light_dir = Vector3::new(0.0, 0.0, 1.0);
+    let intensity = fragment.normal.dot(light_dir).max(0.0);
+
+    color *= intensity;
+    color
+}
+
+
+pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+    match uniforms.shader_mode {
+        //0 => fragment_shader_papel(fragment, uniforms),
+        1 => fragment_shader_rocoso(fragment, uniforms),
+        2 => fragment_shader_anillo(fragment, uniforms),
+        3 => fragment_shader_personalizado(fragment, uniforms),
+        _ => Vector3::new(1.0, 0.0, 1.0),
+    }
+}
+
+
