@@ -22,7 +22,7 @@ use raylib::prelude::*;
 use std::thread;
 use std::time::Duration;
 use std::f32::consts::PI;
-
+use crate::shaders::generate_torus_vertices;
 
 pub struct Uniforms {
     pub model_matrix: Matrix,
@@ -177,19 +177,30 @@ fn main() {
         if window.is_key_pressed(KeyboardKey::KEY_THREE) {
             current_shader = 3;
         }
+        if window.is_key_pressed(KeyboardKey::KEY_FOUR) {
+            current_shader = 4; // Nuevo shader: toroide
+        }
 
         // Actualizar uniforms
         uniforms.time = get_current_time_seconds();
         uniforms.shader_mode = current_shader;
 
-        render(&mut framebuffer, &uniforms, &vertex_array, &light);
+        if current_shader == 4 {
+            // Generar y renderizar el toroide
+            let torus_vertices = generate_torus_vertices(&uniforms);
+            render(&mut framebuffer, &uniforms, &torus_vertices, &light);
+        } else {
+            // Renderizar la esfera con su vertex array
+            render(&mut framebuffer, &uniforms, &vertex_array, &light);
+        }
+
 
         framebuffer.swap_buffers(&mut window, &raylib_thread);
 
         let mut d = window.begin_drawing(&raylib_thread);
 
         // Dibujar un menú visual simple
-        let options = ["1. 🪨 Planeta rocoso", "2. ☁️ Gigante gaseoso", "3. 🪐 Planeta personalizado"];
+        let options = ["1. 🪨 Planeta rocoso", "2. ☁️ Gigante gaseoso", "3. 🪐 Planeta personalizado", "4 toroide"];
         let start_y = 60;
         for (i, &option) in options.iter().enumerate() {
             let y = start_y + i as i32 * 25;
@@ -231,3 +242,5 @@ fn main() {
         thread::sleep(Duration::from_millis(16));
     }
 }
+
+
