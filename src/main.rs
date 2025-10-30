@@ -23,6 +23,11 @@ use std::thread;
 use std::time::Duration;
 use std::f32::consts::PI;
 use crate::shaders::generate_torus_vertices;
+use crate::shaders::fragment_shader_personalizado;
+use crate::shaders::fragment_shader_torus;
+use crate::shaders::fragment_shader_gaseoso;
+use crate::shaders::fragment_shader_rocoso;
+use crate::fragment::Fragment;
 
 pub struct Uniforms {
     pub model_matrix: Matrix,
@@ -33,7 +38,14 @@ pub struct Uniforms {
     pub shader_mode: i32,
 }
 
-fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Vertex], light: &Light) {
+fn render(
+    framebuffer: &mut Framebuffer, 
+    uniforms: &Uniforms, 
+    vertex_array: &[Vertex],
+    light: &Light,
+    fragment_shader: fn(&Fragment, &Uniforms) -> Vector3
+    
+) {
     // Vertex Shader Stage
     let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
     for vertex in vertex_array {
@@ -62,10 +74,7 @@ fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Ve
     // Fragment Processing Stage
     for fragment in fragments {
         // Verificar que el fragment esté dentro de los límites del framebuffer
-        // if fragment.position.x >= 0.0 && fragment.position.x < framebuffer.width as f32 &&
-        //    fragment.position.y >= 0.0 && fragment.position.y < framebuffer.height as f32 {
-            
-        //let color = shaders::fragment_shader_paper(&fragment);
+    
         let final_color = fragment_shader(&fragment, uniforms);
         framebuffer.point(
             fragment.position.x as i32,
@@ -74,7 +83,7 @@ fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Ve
             fragment.depth,
 
         );
-        //}
+        
     }
 }
 
@@ -185,14 +194,24 @@ fn main() {
         uniforms.time = get_current_time_seconds();
         uniforms.shader_mode = current_shader;
 
-        if current_shader == 4 {
-            // Generar y renderizar el toroide
+        if current_shader == 3 {
+            // Renderizar planeta con su shader
+            render(&mut framebuffer, &uniforms, &vertex_array, &light, fragment_shader_personalizado);
+
+            // Generar y renderizar toroide con su shader
             let torus_vertices = generate_torus_vertices(&uniforms);
-            render(&mut framebuffer, &uniforms, &torus_vertices, &light);
+            render(&mut framebuffer, &uniforms, &torus_vertices, &light, fragment_shader_torus);
         } else {
-            // Renderizar la esfera con su vertex array
-            render(&mut framebuffer, &uniforms, &vertex_array, &light);
+            // Renderizar normalmente según el shader seleccionado
+            let shader_fn = match current_shader {
+                1 => fragment_shader_rocoso,
+                2 => fragment_shader_gaseoso,
+                4 => fragment_shader_torus,
+                _ => fragment_shader_personalizado,
+            };
+            render(&mut framebuffer, &uniforms, &vertex_array, &light, shader_fn);
         }
+
 
 
         framebuffer.swap_buffers(&mut window, &raylib_thread);
