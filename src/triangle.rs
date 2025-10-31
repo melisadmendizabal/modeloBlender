@@ -51,35 +51,60 @@ pub fn barycentric_coordinates(
     b: &Vertex,
     c: &Vertex,
 ) -> (f32, f32, f32) {
-    // Convertimos a Vector2 para usar operaciones de Raylib
-    let p = Vector2::new(p_x, p_y);
-    let a2 = Vector2::new(a.transformed_position.x, a.transformed_position.y);
-    let b2 = Vector2::new(b.transformed_position.x, b.transformed_position.y);
-    let c2 = Vector2::new(c.transformed_position.x, c.transformed_position.y);
+    // Extraer coordenadas
+    let (x1, y1) = (a.transformed_position.x, a.transformed_position.y);
+    let (x2, y2) = (b.transformed_position.x, b.transformed_position.y);
+    let (x3, y3) = (c.transformed_position.x, c.transformed_position.y);
+    let (px, py) = (p_x, p_y);
 
-    // Vector2 no tiene cross() directamente, pero podemos implementarlo fácilmente:
-    fn cross(v1: Vector2, v2: Vector2) -> f32 {
-        v1.x * v2.y - v1.y * v2.x
+    // Sistema:
+    // α * x1 + β * x2 + γ * x3 = px
+    // α * y1 + β * y2 + γ * y3 = py
+    // α + β + γ = 1
+
+    // Matriz A y vector B
+    let a11 = x1;
+    let a12 = x2;
+    let a13 = x3;
+    let a21 = y1;
+    let a22 = y2;
+    let a23 = y3;
+    let a31 = 1.0;
+    let a32 = 1.0;
+    let a33 = 1.0;
+
+    let b1 = px;
+    let b2 = py;
+    let b3 = 1.0;
+
+    // Determinante de A
+    let det_a = a11 * (a22 * a33 - a23 * a32)
+        - a12 * (a21 * a33 - a23 * a31)
+        + a13 * (a21 * a32 - a22 * a31);
+
+    if det_a.abs() < 1e-10 {
+        return (-1.0, -1.0, -1.0); // triángulo degenerado
     }
 
-    // Vectores de los lados del triángulo
-    let v0 = b2 - a2;
-    let v1 = c2 - a2;
-    let v2 = p - a2;
+    // Determinantes para cada variable (regla de Cramer)
+    let det_alpha = b1 * (a22 * a33 - a23 * a32)
+        - a12 * (b2 * a33 - a23 * b3)
+        + a13 * (b2 * a32 - a22 * b3);
 
-    // Área del triángulo ABC (doble área realmente)
-    let denom = cross(v0, v1);
+    let det_beta = a11 * (b2 * a33 - a23 * b3)
+        - b1 * (a21 * a33 - a23 * a31)
+        + a13 * (a21 * b3 - b2 * a31);
 
-    if denom.abs() < 1e-10 {
-        return (-1.0, -1.0, -1.0);
-    }
+    let det_gamma = a11 * (a22 * b3 - b2 * a32)
+        - a12 * (a21 * b3 - b2 * a31)
+        + b1 * (a21 * a32 - a22 * a31);
 
-    // Usamos relaciones de área para las barycentrics
-    let w1 = cross(v2, v1) / denom;
-    let w2 = cross(v0, v2) / denom;
-    let w3 = 1.0 - w1 - w2;
+    // Soluciones
+    let alpha = det_alpha / det_a;
+    let beta = det_beta / det_a;
+    let gamma = det_gamma / det_a;
 
-    (w1, w2, w3)
+    (alpha, beta, gamma)
 }
 
 
@@ -183,6 +208,9 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, light: &Light) -> Vec<Fra
                           + w2 * v2.transformed_position.z
                           + w3 * v3.transformed_position.z;
 
+                
+                    
+
                 let edge1 = v2.position - v1.position;
                 let edge2 = v3.position - v1.position;
                 let mut face_normal = edge1.cross(edge2);
@@ -190,7 +218,7 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, light: &Light) -> Vec<Fra
 
                 // calcula intensidad con face normal
                 let light_dir_world = (light.position - world_pos).normalized();
-                let face_intensity = face_normal.dot(light_dir_world).max(0.0);
+                let face_intensity = 1.0; // face_normal.dot(light_dir_world).max(0.0);
 
                 fragments.push(Fragment::new(p_x, p_y, Vector3::new(face_intensity, face_intensity, face_intensity), depth, face_normal));
 
