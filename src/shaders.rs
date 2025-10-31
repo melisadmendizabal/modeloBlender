@@ -147,8 +147,8 @@ pub fn fragment_shader_torus(fragment: &Fragment, uniforms: &Uniforms) -> Vector
     let g = (fragment.position.y * 10.0).sin().abs();
     let b = ((fragment.position.x + fragment.position.y)*5.0).sin().abs();
     let color = Vector3::new(r, g, b);
-    color
-    //base_color * intensity + highlight * intensity.powf(4.0)
+    //color
+    base_color * intensity + highlight * intensity.powf(4.0)
 }
 
 
