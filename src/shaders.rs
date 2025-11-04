@@ -4,6 +4,7 @@ use crate::vertex::Vertex;
 use crate::Uniforms;
 use crate::fragment::Fragment;
 use crate::matrix::multiply_matrix_vector4;
+use crate::fragment::FragmentOutput;
 
 pub fn fragment_shader_anillo(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
     let base_color = Vector3::new(0.8, 0.7, 0.5); // color principal del anillo
@@ -125,7 +126,7 @@ pub fn generate_torus_vertices(uniforms: &Uniforms) -> Vec<Vertex> {
 }
 
 
-pub fn fragment_shader_torus(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+pub fn fragment_shader_torus(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     let mut light_dir = Vector3::new(0.0, 1.0, 1.0);
     light_dir.normalize();
     let intensity = (fragment.normal.x * light_dir.x
@@ -148,7 +149,12 @@ pub fn fragment_shader_torus(fragment: &Fragment, uniforms: &Uniforms) -> Vector
     let b = ((fragment.position.x + fragment.position.y)*5.0).sin().abs();
     let color = Vector3::new(r, g, b);
     //color
-    base_color * intensity + highlight * intensity.powf(4.0)
+    let final_color = base_color * intensity + highlight * intensity.powf(4.0);
+
+    FragmentOutput {
+        color: final_color,
+        alpha: 0.1, // 👈 este shader será semitransparente
+    }
 }
 
 
@@ -298,7 +304,7 @@ pub fn fragment_shader_papel(fragment: &Fragment, uniforms: &Uniforms) -> Vector
 }
 
 
-pub fn fragment_shader_rocoso(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+pub fn fragment_shader_rocoso(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput  {
     // color base tipo roca
     let base_blue = Vector3::new(0.2, 0.4, 0.8);
     let green = Vector3::new(0.1, 0.6, 0.2);
@@ -314,10 +320,15 @@ pub fn fragment_shader_rocoso(fragment: &Fragment, uniforms: &Uniforms) -> Vecto
     let light_dir = Vector3::new(0.0, 0.0, 1.0);
     let intensity = fragment.normal.dot(light_dir).max(0.0);
 
-    color * intensity
+    let final_color = color * intensity;
+
+    FragmentOutput {
+        color: final_color,
+        alpha: 0.1, // 👈 este shader será semitransparente
+    }
 }
 
-pub fn fragment_shader_gaseoso(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+pub fn fragment_shader_gaseoso(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput  {
     // efecto ondulado o variable con el tiempo
     let base_red = Vector3::new(0.8, 0.3, 0.1);
     let darker = Vector3::new(0.5, 0.2, 0.1);
@@ -332,10 +343,15 @@ pub fn fragment_shader_gaseoso(fragment: &Fragment, uniforms: &Uniforms) -> Vect
     let light_dir = Vector3::new(0.0, 0.0, 1.0);
     let intensity = fragment.normal.dot(light_dir).max(0.0);
 
-    color * intensity
+    let final_color = color * intensity;
+
+    FragmentOutput {
+        color: final_color,
+        alpha: 0.1, // 👈 este shader será semitransparente
+    }
 }
 
-pub fn fragment_shader_personalizado(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+pub fn fragment_shader_personalizado(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput  {
     let base = Vector3::new(0.9, 0.8, 0.6);
     let bands = ((fragment.position.y * 12.0).sin() * 0.5 + 0.5).powf(1.5);
     let ring_color = Vector3::new(0.8, 0.7, 0.5);
@@ -346,19 +362,48 @@ pub fn fragment_shader_personalizado(fragment: &Fragment, uniforms: &Uniforms) -
     let light_dir = Vector3::new(0.0, 0.0, 1.0);
     let intensity = fragment.normal.dot(light_dir).max(0.0);
 
-    color *= intensity;
-    color
+    // color *= intensity;
+    // color
+    let final_color = color * intensity;
+    FragmentOutput {
+        color: final_color,
+        alpha: 0.1, // 👈 este shader será semitransparente
+    }
+}
+
+pub fn combine_shaders(
+    fragment: &Fragment,
+    uniforms: &Uniforms,
+    mix_factor: f32,
+) -> FragmentOutput {
+    let s1 = fragment_shader_rocoso(fragment, uniforms);
+    let s2 = fragment_shader_gaseoso(fragment, uniforms);
+
+    FragmentOutput {
+        color: s1.color * (1.0 - mix_factor) + s2.color * mix_factor,
+        alpha: s1.alpha * (1.0 - mix_factor) + s2.alpha * mix_factor,
+    }
+}
+
+pub fn fragment_shader_compuesto(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
+    let mix_factor = ((uniforms.time * 0.5).sin() * 0.5 + 0.5).powf(1.5);
+    combine_shaders(fragment, uniforms, mix_factor)
 }
 
 
-pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+
+
+pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     match uniforms.shader_mode {
         //0 => fragment_shader_papel(fragment, uniforms),
-        1 => fragment_shader_rocoso(fragment, uniforms),
+        1 => fragment_shader_compuesto(fragment, uniforms),
         2 => fragment_shader_gaseoso(fragment, uniforms),
         3 => fragment_shader_personalizado(fragment, uniforms),
         4 => fragment_shader_torus(fragment, uniforms),
-        _ => Vector3::new(1.0, 0.0, 1.0),
+        _ => FragmentOutput {
+        color: Vector3::new(1.0, 0.0, 1.0),
+        alpha: 0.1, // 👈 este shader será semitransparente
+    }
     }
 }
 

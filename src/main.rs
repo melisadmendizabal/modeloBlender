@@ -28,6 +28,7 @@ use crate::shaders::fragment_shader_torus;
 use crate::shaders::fragment_shader_gaseoso;
 use crate::shaders::fragment_shader_rocoso;
 use crate::fragment::Fragment;
+use crate::fragment::FragmentOutput;
 
 pub struct Uniforms {
     pub model_matrix: Matrix,
@@ -43,7 +44,7 @@ fn render(
     uniforms: &Uniforms, 
     vertex_array: &[Vertex],
     light: &Light,
-    fragment_shader: fn(&Fragment, &Uniforms) -> Vector3
+    fragment_shader: fn(&Fragment, &Uniforms) -> FragmentOutput,
     
 ) {
     // Vertex Shader Stage
@@ -75,12 +76,14 @@ fn render(
     for fragment in fragments {
         // Verificar que el fragment esté dentro de los límites del framebuffer
     
-        let final_color = fragment_shader(&fragment, uniforms);
+        //let final_color = fragment_shader(&fragment, uniforms);
+        let out = fragment_shader(&fragment, uniforms);
         framebuffer.point(
             fragment.position.x as i32,
             fragment.position.y as i32,
-            final_color, 
+            out.color, 
             fragment.depth,
+            out.alpha,
 
         );
         
@@ -94,6 +97,7 @@ fn get_current_time_seconds() -> f32 {
         .unwrap();
     start.as_secs_f32()
 }
+
 
 
 fn main() {
@@ -110,6 +114,22 @@ fn main() {
     framebuffer.set_background_color(Vector3::new(0.2,0.2,0.4)); //azul oscuro
 
     framebuffer.init_texture(&mut window, &raylib_thread);
+
+
+
+    // prueba rápida: pinta un pixel rojo en (100,100) de la imagen
+    framebuffer.image.draw_pixel(100, 100, Color::RED);
+    framebuffer.texture.as_mut().map(|tex| {
+        let colors = framebuffer.image.get_image_data();
+        let data: &[u8] = unsafe {
+            std::slice::from_raw_parts(colors.as_ptr() as *const u8, colors.len() * 4)
+        };
+        tex.update_texture(data).unwrap();
+    });
+
+
+
+
 
     let camera_position = Vector3::new(0.0, 1.0, 5.0);
     let camera_target = Vector3::new(0.0, 0.0, 0.0);
