@@ -153,7 +153,7 @@ pub fn fragment_shader_torus(fragment: &Fragment, uniforms: &Uniforms) -> Fragme
 
     FragmentOutput {
         color: final_color,
-        alpha: 0.1, // 👈 este shader será semitransparente
+        alpha: 1.0, // 👈 este shader será semitransparente
     }
 }
 
@@ -347,7 +347,7 @@ pub fn fragment_shader_gaseoso(fragment: &Fragment, uniforms: &Uniforms) -> Frag
 
     FragmentOutput {
         color: final_color,
-        alpha: 0.1, // 👈 este shader será semitransparente
+        alpha: 1.0, // 👈 este shader será semitransparente
     }
 }
 
@@ -367,7 +367,7 @@ pub fn fragment_shader_personalizado(fragment: &Fragment, uniforms: &Uniforms) -
     let final_color = color * intensity;
     FragmentOutput {
         color: final_color,
-        alpha: 0.1, // 👈 este shader será semitransparente
+        alpha: 1.0, // 👈 este shader será semitransparente
     }
 }
 
@@ -402,7 +402,7 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutp
         4 => fragment_shader_torus(fragment, uniforms),
         _ => FragmentOutput {
         color: Vector3::new(1.0, 0.0, 1.0),
-        alpha: 0.1, // 👈 este shader será semitransparente
+        alpha: 1.0, // 👈 este shader será semitransparente
     }
     }
 }
