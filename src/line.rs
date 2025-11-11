@@ -35,6 +35,7 @@ pub fn line(
             Vector3::new(1.0, 1.0, 1.0),
             depth,
             Vector3::new(0.0, 0.0, 1.0), // default normal for lines (or pass better)
+            Vector3::zero(),
         );
         fragments.push(fragment);
 

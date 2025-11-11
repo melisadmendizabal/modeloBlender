@@ -8,15 +8,23 @@ pub struct Fragment {
     pub color: Vector3,
     pub depth: f32,
     pub normal: Vector3,
+    pub world_position: Vector3,
 }
 
+pub struct FragmentOutput {
+    pub color: Vector3,
+    pub alpha: f32,
+}
+
+
 impl Fragment {
-    pub fn new(x: f32, y: f32, color: Vector3, depth: f32, normal: Vector3) -> Self {
+    pub fn new(x: f32, y: f32, color: Vector3, depth: f32, normal: Vector3, world_position: Vector3,) -> Self {
         Fragment {
             position: Vector2::new(x, y),
             color,
             depth,
             normal,
+            world_position,
         }
     }
 }

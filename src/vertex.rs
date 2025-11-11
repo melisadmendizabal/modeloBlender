@@ -20,7 +20,7 @@ impl Vertex {
       position,
       normal,
       tex_coords,
-      color: Vector3::new(0.0, 0.0, 0.0), // Black
+      color: Vector3::new(1.0, 1.0, 1.0), // Black
       transformed_position: position,
       transformed_normal: normal,
       w: 1.0,
@@ -51,7 +51,7 @@ impl Default for Vertex {
       position: Vector3::new(0.0, 0.0, 0.0),
       normal: Vector3::new(0.0, 1.0, 0.0),
       tex_coords: Vector2::new(0.0, 0.0),
-      color: Vector3::new(0.0, 0.0, 0.0), // Black
+      color: Vector3::new(1.0, 1.0, 1.0), // Black
       transformed_position: Vector3::new(0.0, 0.0, 0.0),
       transformed_normal: Vector3::new(0.0, 1.0, 0.0),
       w: 1.0,
