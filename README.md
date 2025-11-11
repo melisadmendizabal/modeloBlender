@@ -1,89 +1,77 @@
-# 🌌 Laboratorio: Static Shaders — Rama `planetas`
+# 🌌 Laboratorio: Static Shaders — Rama `Sol`
 
-## 🎯 Objetivo
-En este laboratorio se practica la creación de cuerpos celestes mediante shaders (sin texturas ni materiales externos).  
-Cada planeta fue generado únicamente a partir de una esfera base, y toda su apariencia visual —colores, gradientes, efectos de iluminación y detalles superficiales— proviene de cálculos en los fragment y vertex shaders.
-Los shaders implementados simulan materiales, atmósferas y superficies planetarias usando funciones matemáticas, ruido, gradientes y composición por capas.
+## 🎯 Descripción
+En este laboratorio se practica el diseño procedural de una estrella (Sol) utilizando shaders en Rust.
+La superficie y animación se generan únicamente mediante funciones de ruido y variables de tiempo, sin texturas ni materiales precargados. Este laboratorio se hizo teniendo de base la rama de planetas, por lo que el sol aparece como un planeta extra.
+
+El shader combina múltiples tipos de ruido (Perlin, Simplex, Cellular y Fractal Brownian Motion) para simular:
+- Turbulencias solares
+- Llamaradas energéticas
+- Manchas solares
+- Pulsaciones luminosas
+- Distorsiones superficiales (flare)
+El resultado es una animación continua y cíclica, controlada mediante una variable uniforme de tiempo (uniforms.time).
+---
+
+## 🪐 Sol
 
 
-## 🪐 Planetas Implementados
 
-### 🪨 1. Planeta Rocoso 
-- Basado en simulación de superficie lunar.
-- Capas de shader:
-  1. **Base rugosa** (ruido procedimental, tonos gris claro/oscuro).
-  2. **Sombras de cráteres** (profundidad y oclusión por distancia al centro del cráter).
-  3. **Bordes brillantes** (efecto de luz sobre el relieve).
-  4. **Normal Mapping** para simular profundidad sin geometría adicional.
-- Implementa iluminación direccional y ambient occlusion simulada.
+![Uploading Sol (1).gif…]()
 
-<img width="887" height="656" alt="image" src="https://github.com/user-attachments/assets/d7693143-4c9e-4cc5-b7ad-3063508d69d6" />
+
 
 
 ---
+## ⚙️ Estructura general
 
-### ☁️ 2. Gigante Gaseoso
-- Capas de shader:
-  1. **Rayas dinámicas:** alternan entre diferentes paletas de color cada segundo (animación continua).
-  2. **Nubes procedurales:** ruido en múltiples frecuencias que genera profundidad y movimiento.
-
-     
-<img width="818" height="596" alt="image" src="https://github.com/user-attachments/assets/fea62362-e3bb-4b31-ae35-a2b950f0798a" />
-
+El shader está dividido en dos etapas principales:
+1. Vertex Shader (vertex_shader_star): Deforma la geometría de la esfera base para simular turbulencias y llamaradas solares.
+2. Fragment Shader (fragment_shader_star y fragment_shader_star_flares)
+Calcula el color, emisión y brillo de cada fragmento según su “temperatura” y la actividad solar simulada.
 
 ---
-
-
-### 🍓 3. Planeta Extra — *“Strawberry Planet”* 🍓
-- Planeta adicional de carácter creativo.
-- Capas de shader:
-  1. **Base roja grumosa:** textura de superficie tipo fresa.
-  2. **Semillas doradas:** distribuidas procedimentalmente en la superficie.
-  3. **Hoja verde:** zona superior con textura de venas.
-- Incluye blending por capas con transparencias suaves.
-- Iluminación natural con difuso y especular leve.
-
-
-<img width="821" height="661" alt="image" src="https://github.com/user-attachments/assets/5bdd1867-2109-4ce9-aa1b-cb93d479fcf1" />
-
+## 🧠 Variables y Uniforms
+-  `uniforms.time`: Tiempo en segundos desde el inicio del programa. Controla toda la animación (ruidos, pulsaciones, flares, etc.). 
+- `uniforms.model_matrix`, `view_matrix`, `projection_matrix`, `viewport_matrix`: Matrices estándar para transformar el modelo de espacio local a pantalla. 
+- `vertex.position`, `vertex.normal`: Posición y normal del vértice original. Se modifican en el vertex shader según ruido.
 
 ---
+##🌋 Funciones de ruido implementadas
 
+Cada tipo de ruido cumple un propósito visual distinto en la simulación del sol:
 
-### 💫 4. Sistema de Anillos Procedurales — *Vertex Shader + Fragment Shader*
-Archivo: `shadersAnillos.rs`
+1. Perlin Noise
+   Uso: Turbulencias suaves y base de movimiento.
+   Efecto visual: Ondas orgánicas que fluyen sobre la superficie, simulando el plasma solar.
+   Implementación: Se interpola suavemente entre valores pseudoaleatorios para obtener transiciones continuas.
 
-Este shader genera anillos planetarios **completamente procedurales** usando **deformación de vértices** en un **torus virtual**.  
-No se usa ningún modelo importado: toda la geometría y coloración se calcula en tiempo real.
+2. Simplex Noise
+   Uso: Granulación solar fina (textura de superficie).
+   Efecto visual: Añade pequeños detalles que dan sensación de movimiento granular, similar a la fotosfera.
 
-#### 🧩 Vertex Shader (`vertex_shader_torus`)
-- Genera un **toroide** a partir de coordenadas paramétricas `(u, v)`:
-  - `R = 0.8` → radio interior del anillo.
-  - `r = 0.2` → grosor del anillo.
-  - Se aplica un **factor de aplanamiento (`flatten_factor`)** para hacerlo más delgado visualmente.
- 
+4. Cellular / Worley Noise
+   Uso: Manchas solares.
+   Efecto visual: Crea regiones de menor intensidad o “puntos fríos” que aparecen y desaparecen dinámicamente.
 
-<img width="973" height="671" alt="image" src="https://github.com/user-attachments/assets/1cd114e9-85ad-4d79-9922-aab5588795f8" />
+4. Fractal Brownian Motion (FBM)
+   Uso: Combina múltiples octavas de Perlin para formar patrones más ricos.
+   Efecto visual: Superpone diferentes escalas de ruido, logrando profundidad visual y movimiento natural.
 
- 
 ---
+## 💫 Vertex Shader: vertex_shader_star
 
-### 🔴 5. Planeta Rojo — *“Red Planet” (tipo Marte)*
-- Simula geología marciana con efectos atmosféricos.
-- Capas de shader:
-  1. **Terreno base:** variación geológica por ruido (óxidos, llanuras, montañas).
-  2. **Tormentas de arena:** patrones dinámicos que se desplazan con el tiempo.
-  3. **Casquetes polares:** formación en los polos con bordes irregulares.
+Propósito:
+Es un vertex shader adicional al que se usa con lo planetas, ya que deforma la superficie de la esfera base según valores de ruido dependientes del tiempo, generando picos o depresiones que simulan llamaradas y vibración solar. 
 
-- Variantes:
-  - `fragment_shader_red_planet_simple` → solo terreno.
-  - `fragment_shader_red_planet_stormy` → tormentas intensas.
-  - `fragment_shader_red_planet_night` → versión nocturna con brillo tenue.
-- Simulación de iluminación cálida (sol rojizo).
+Funcionamiento:
+- Calcula coordenadas esféricas del vértice.
+- Evalúa funciones de ruido (Perlin + FBM) para obtener una intensidad de turbulencia.
+- Aplica una escala variable al radio del vértice (scale = 1.0 + distortion).
+- Deforma también la normal para lograr un efecto de luz dinámico.
 
-<img width="975" height="683" alt="image" src="https://github.com/user-attachments/assets/0a88f3d2-e844-4db8-a19d-d9fa67999cc7" />
-
-
+Efecto visible:
+La esfera “late” y se expande en zonas aleatorias, como una estrella activa.
 
 ---
 
@@ -108,7 +96,7 @@ Durante la ejecución del renderer:
 
 ---
 
-## ⚙️ Parámetros (Uniforms) y Documentación Técnica
+## ⚙️ Parámetros (Uniforms) y Documentación Técnica general de planetas y estrella
 
 | Uniform | Tipo | Descripción |
 |----------|------|-------------|
