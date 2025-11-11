@@ -137,6 +137,27 @@ fn main() {
 
 
 
+    let translation = Vector3::new(0.0, 0.0, 0.0);
+    let mut rotation_y = 0.0f32;
+    
+    // ============================================
+    // NUEVO: Sistema de rotación configurable
+    // ============================================
+    let mut auto_rotate = true;              // Toggle rotación automática
+    let mut rotation_speed_y = 0.3f32;       // Velocidad rotación Y (izq/der)
+    let mut rotation_speed_x = 0.0f32;       // Velocidad rotación X (arriba/abajo)
+    let mut rotation_speed_z = 0.0f32;       // Velocidad rotación Z (inclinación)
+    
+    let mut rotation_x = 0.0f32;
+    let mut rotation_z = 0.0f32;
+    
+    // Configuraciones preestablecidas por planeta
+    let mut current_preset = 0; // 0 = custom, 1-5 = presets
+    
+    let scale = 1.0f32;
+
+
+
 
 
     let camera_position = Vector3::new(0.0, 1.0, 5.0);
@@ -187,11 +208,22 @@ fn main() {
     while !window.window_should_close() {
         camera.process_input(&window);
 
+        if window.is_key_pressed(KeyboardKey::KEY_SPACE) {
+            auto_rotate = !auto_rotate;
+            println!("Auto-rotación: {}", if auto_rotate { "ON" } else { "OFF" });
+        }
+
+        if auto_rotate {
+            rotation_y += rotation_speed_y * 0.1;  // Multiplicador para suavizar
+            rotation_x += rotation_speed_x * 0.01;
+            rotation_z += rotation_speed_z * 0.01;
+        }
+
         rotation_y += rotation_speed;
         
         framebuffer.clear();
 
-        let rotation = Vector3::new(0.0, rotation_y, 0.0);
+        let rotation = Vector3::new(rotation_x, rotation_y, rotation_z);
         // Crear matrices de transformación
         let model_matrix = create_model_matrix (translation, scale, rotation);
         let view_matrix = camera.get_view_matrix();
