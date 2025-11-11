@@ -36,16 +36,16 @@ pub fn fragment_shader_anillo(fragment: &Fragment, uniforms: &Uniforms) -> Vecto
 }
 
 pub fn vertex_shader_torus(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
-    let R = 0.8; //interior
+    let r1 = 0.8; //interior
     let r = 0.2; //grosor
     let flatten_factor = 0.2;
 
     let theta = vertex.position.x * std::f32::consts::PI * 2.0;
     let phi = vertex.position.y * std::f32::consts::PI * 2.0;
 
-    let x = (R + r * phi.cos()) * theta.cos();
+    let x = (r1 + r * phi.cos()) * theta.cos();
     let y = r * phi.sin() * flatten_factor;
-    let z = (R + r * phi.cos()) * theta.sin();
+    let z = (r1 + r * phi.cos()) * theta.sin();
 
     // Crear vector homogéneo
     let position_vec4 = Vector4::new(x, y, z, 1.0);
@@ -98,7 +98,7 @@ pub fn generate_torus_vertices(uniforms: &Uniforms) -> Vec<Vertex> {
     let mut vertex_array = Vec::new();
     let steps_theta = 60;
     let steps_phi = 10;
-    let R = 1.0;
+    let r1 = 1.0;
     let r = 0.1;
     
 

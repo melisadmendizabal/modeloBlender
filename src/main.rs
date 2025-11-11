@@ -14,6 +14,7 @@ mod shader_strawberry;
 mod shader_gaseoso;
 mod shader_rocoso;
 mod shader_rojo;
+mod shader_sol;
 
 use matrix::{create_model_matrix, create_projection_matrix, create_viewport_matrix};
 use camera::Camera;
@@ -34,9 +35,15 @@ use shader_strawberry::fragment_shader_strawberry;
 use shader_gaseoso::fragment_shader_gaseoso;
 use shader_rocoso::fragment_shader_crater_hybrid;
 use shader_rojo::fragment_shader_red_planet;
-use crate::shaders::fragment_shader_rocoso;
+//use shader_sol::fragment_shader_star;
+use shader_sol::fragment_shader_star_flares;
+use shader_sol::vertex_shader_star;
+//use crate::shaders::fragment_shader_rocoso;
 use crate::fragment::Fragment;
 use crate::fragment::FragmentOutput;
+use std::time::Instant;
+
+
 
 pub struct Uniforms {
     pub model_matrix: Matrix,
@@ -52,13 +59,13 @@ fn render(
     uniforms: &Uniforms, 
     vertex_array: &[Vertex],
     light: &Light,
+    vertex_shader: fn(&Vertex, &Uniforms) -> Vertex,  // ✨ NUEVO!
     fragment_shader: fn(&Fragment, &Uniforms) -> FragmentOutput,
-    
 ) {
-    // Vertex Shader Stage
+    // Vertex Shader Stage - Ahora usa el shader correcto
     let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
     for vertex in vertex_array {
-        let transformed = vertex_shader(vertex, uniforms);
+        let transformed = vertex_shader(vertex, uniforms); // ✅ Shader personalizado
         transformed_vertices.push(transformed);
     }
 
@@ -82,9 +89,6 @@ fn render(
 
     // Fragment Processing Stage
     for fragment in fragments {
-        // Verificar que el fragment esté dentro de los límites del framebuffer
-    
-        //let final_color = fragment_shader(&fragment, uniforms);
         let out = fragment_shader(&fragment, uniforms);
         framebuffer.point(
             fragment.position.x as i32,
@@ -92,29 +96,30 @@ fn render(
             out.color, 
             fragment.depth,
             out.alpha,
-
         );
-        
     }
 }
 
-fn get_current_time_seconds() -> f32 {
-    use std::time::SystemTime;
-    let start = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap();
-    start.as_secs_f32()
+// fn get_current_time_seconds() -> f32 {
+//     use std::time::SystemTime;
+//     let start = SystemTime::now()
+//         .duration_since(SystemTime::UNIX_EPOCH)
+//         .unwrap();
+//     start.as_secs_f32()
+// }
+
+fn get_current_time_seconds(start_time: &Instant) -> f32 {
+    start_time.elapsed().as_secs_f32()
 }
-
-
 
 fn main() {
     let window_width = 1300;
     let window_height = 900;
+    let start_time = Instant::now();
 
     let (mut window, raylib_thread) = raylib::init()
         .size(window_width, window_height)
-        .title("Barco de papel :D")
+        .title("Planetitas :D")
         .log_level(TraceLogLevel::LOG_WARNING)
         .build();
 
@@ -125,8 +130,7 @@ fn main() {
 
 
 
-    // prueba rápida: pinta un pixel rojo en (100,100) de la imagen
-    framebuffer.image.draw_pixel(100, 100, Color::RED);
+   
     framebuffer.texture.as_mut().map(|tex| {
         let colors = framebuffer.image.get_image_data();
         let data: &[u8] = unsafe {
@@ -138,21 +142,21 @@ fn main() {
 
 
     let translation = Vector3::new(0.0, 0.0, 0.0);
-    let mut rotation_y = 0.0f32;
+    let rotation_y = 0.0f32;
     
     // ============================================
     // NUEVO: Sistema de rotación configurable
     // ============================================
     let mut auto_rotate = true;              // Toggle rotación automática
-    let mut rotation_speed_y = 0.3f32;       // Velocidad rotación Y (izq/der)
-    let mut rotation_speed_x = 0.0f32;       // Velocidad rotación X (arriba/abajo)
-    let mut rotation_speed_z = 0.0f32;       // Velocidad rotación Z (inclinación)
+    let rotation_speed_y = 0.3f32;       // Velocidad rotación Y (izq/der)
+    let rotation_speed_x = 0.0f32;       // Velocidad rotación X (arriba/abajo)
+    let rotation_speed_z = 0.0f32;       // Velocidad rotación Z (inclinación)
     
     let mut rotation_x = 0.0f32;
     let mut rotation_z = 0.0f32;
     
     // Configuraciones preestablecidas por planeta
-    let mut current_preset = 0; // 0 = custom, 1-5 = presets
+    let current_preset = 0; // 0 = custom, 1-5 = presets
     
     let scale = 1.0f32;
 
@@ -194,7 +198,7 @@ fn main() {
     let vertex_array = obj.get_vertex_array();
 
     //menu de los shaders
-    let mut current_shader = 0;
+    let mut current_shader = 6;
     let mut uniforms = Uniforms {
         model_matrix: Matrix::identity(),
         view_matrix: Matrix::identity(),
@@ -252,18 +256,39 @@ fn main() {
         if window.is_key_pressed(KeyboardKey::KEY_FIVE) {
             current_shader = 5; // Nuevo shader: toroide
         }
+        if window.is_key_pressed(KeyboardKey::KEY_SIX) {
+            current_shader = 6; // Nuevo shader: toroide
+        }
 
         // Actualizar uniforms
-        uniforms.time = get_current_time_seconds();
+        uniforms.time = get_current_time_seconds(&start_time);
         uniforms.shader_mode = current_shader;
 
         if current_shader == 4 {
             // Renderizar planeta con su shader
-            render(&mut framebuffer, &uniforms, &vertex_array, &light, fragment_shader_personalizado);
+            render(
+                &mut framebuffer, 
+                &uniforms, 
+                &vertex_array, 
+                &light, 
+                vertex_shader,
+                fragment_shader_personalizado);
 
             // Generar y renderizar toroide con su shader
             let torus_vertices = generate_torus_vertices(&uniforms);
-            render(&mut framebuffer, &uniforms, &torus_vertices, &light, fragment_shader_torus);
+            render(&mut framebuffer, &uniforms, &torus_vertices, &light, vertex_shader, fragment_shader_torus);
+
+        } else if current_shader == 6 {
+            // ✨ SOL - USA VERTEX SHADER PERSONALIZADO
+            render(
+                &mut framebuffer, 
+                &uniforms, 
+                &vertex_array, 
+                &light, 
+                vertex_shader_star,        // ✅ Vertex shader del sol!
+                fragment_shader_star_flares // ✅ Fragment shader del sol!
+            );
+
         } else {
             // Renderizar normalmente según el shader seleccionado
             let shader_fn = match current_shader {
@@ -274,7 +299,7 @@ fn main() {
                 5 => fragment_shader_red_planet,
                 _ => fragment_shader_crater_hybrid,
             };
-            render(&mut framebuffer, &uniforms, &vertex_array, &light, shader_fn);
+            render(&mut framebuffer, &uniforms, &vertex_array, &light,vertex_shader, shader_fn);
         }
 
 
@@ -284,7 +309,7 @@ fn main() {
         let mut d = window.begin_drawing(&raylib_thread);
 
         // Dibujar un menú visual simple
-        let options = ["1. Planeta Rocoso", "2. Planeta Gaseoso", "3. Planeta Fresita", "4. Planeta Anillos", "5. Planeta Rojo"];
+        let options = ["1. Planeta Rocoso", "2. Planeta Gaseoso", "3. Planeta Fresita", "4. Planeta Anillos", "5. Planeta Rojo", "6. Sol"];
         let start_y = 60;
         for (i, &option) in options.iter().enumerate() {
             let y = start_y + i as i32 * 25;
@@ -312,15 +337,16 @@ fn main() {
             3 => "*.°- Fresita -°.*",
             4 => "*.°- Anillos -°.*",
             5 => "*.°- Rojito -°.*",
+            6 => "*.°- Sol _°.*",
             _ => "*.°- Rocoso -°.*",
         };
 
         d.draw_text(
-            &format!("Shader actual: {}", shader_name),
-            20,     // posición X
-            20,     // posición Y
-            20,     // tamaño de fuente
-            Color::WHITE,
+            &format!("Time: {:.1}s", uniforms.time),
+            window_width - 150,
+            15,
+            20,
+            Color::LIGHTGRAY,
         );
 
 

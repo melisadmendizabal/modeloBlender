@@ -3,8 +3,6 @@ use crate::fragment::Fragment;
 use crate::vertex::Vertex;
 use crate::Vector3;
 use crate::light::Light;
-use crate::Vector2;
-use crate::line::line;
 
 // ============================================
 // Coordenadas baricéntricas usando Regla de Cramer

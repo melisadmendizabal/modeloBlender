@@ -206,31 +206,8 @@ pub fn crater_planet_normal_mapped(fragment: &Fragment, uniforms: &Uniforms) -> 
 // COMBINADORES
 // ============================================
 
-// Versión 1: Combinar las 3 capas (tu idea)
-pub fn fragment_shader_crater_layered(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
-    let base = crater_base_layer(fragment, uniforms);
-    let shadows = crater_shadows_layer(fragment, uniforms);
-    let rims = crater_rims_layer(fragment, uniforms);
-    
-    // Combinar capas
-    let mut final_color = base.color;
-    
-    // Agregar sombras
-    final_color = shadows.color * shadows.alpha + final_color * (1.0 - shadows.alpha);
-    
-    // Agregar bordes brillantes
-    final_color = rims.color * rims.alpha + final_color * (1.0 - rims.alpha);
-    
-    FragmentOutput {
-        color: final_color,
-        alpha: 1.0,
-    }
-}
 
-// Versión 2: Normal mapping (más realista)
-pub fn fragment_shader_crater_realistic(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
-    crater_planet_normal_mapped(fragment, uniforms)
-}
+
 
 // Versión 3: Híbrida (lo mejor de ambos mundos)
 pub fn fragment_shader_crater_hybrid(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {

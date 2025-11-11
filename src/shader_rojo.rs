@@ -138,8 +138,8 @@ pub fn red_planet_ice_caps_layer(fragment: &Fragment, uniforms: &Uniforms) -> Fr
     let ice_color = ice_white * (1.0 - ice_cracks * 0.2) + ice_blue * (ice_cracks * 0.2);
     
     // Bordes irregulares del casquete
-    let edge_noise = ((fragment.world_position.x * 15.0).sin()
-                    * (fragment.world_position.z * 15.0).cos() * 0.5 + 0.5);
+    let edge_noise = (fragment.world_position.x * 15.0).sin()
+                    * (fragment.world_position.z * 15.0).cos() * 0.5 + 0.5;
     
     let ice_alpha = if pole_factor > 0.1 {
         let smoothed = pole_factor.powf(1.5);

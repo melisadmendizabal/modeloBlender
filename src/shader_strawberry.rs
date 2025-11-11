@@ -119,7 +119,7 @@ pub fn strawberry_leaf_layer(fragment: &Fragment, uniforms: &Uniforms) -> Fragme
                       * (fragment.world_position.z * 20.0).cos()).abs();
     
     // Textura de bordes irregulares
-    let edge_noise = ((fragment.world_position.x * 30.0 + fragment.world_position.z * 25.0).sin() * 0.5 + 0.5);
+    let edge_noise = (fragment.world_position.x * 30.0 + fragment.world_position.z * 25.0).sin() * 0.5 + 0.5;
     
     // Color de la hoja con venas
     let leaf_color = leaf_green * (1.0 - vein_pattern * 0.3) + leaf_dark * (vein_pattern * 0.3);

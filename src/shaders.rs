@@ -7,15 +7,13 @@ use crate::Uniforms;
 use crate::fragment::Fragment;
 use crate::matrix::multiply_matrix_vector4;
 use crate::fragment::FragmentOutput;
-use crate::shader_anillo::fragment_shader_anillo;
-use crate::shader_anillo::vertex_shader_torus;
-use crate::shader_anillo::generate_torus_vertices;
 use crate::shader_anillo::fragment_shader_torus;
-use crate::shader_anillo::fragment_shader_personalizado;
 use crate::shader_strawberry::fragment_shader_strawberry;
 use crate::shader_gaseoso::fragment_shader_gaseoso;
 use crate::shader_rocoso::fragment_shader_crater_hybrid;
 use crate::shader_rojo::fragment_shader_red_planet;
+//use crate::shader_sol::fragment_shader_star;
+use crate::shader_sol::fragment_shader_star_flares;
 
 
 
@@ -141,7 +139,7 @@ pub fn fragment_shader_papel(fragment: &Fragment, uniforms: &Uniforms) -> Vector
     shaded_color.y = shaded_color.y.min(255.0).max(0.0);
     shaded_color.z = shaded_color.z.min(255.0).max(0.0);
 
-    let mut a = color * intensity;
+    let a = color * intensity;
 
     a
 
@@ -221,6 +219,7 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutp
         3 => fragment_shader_strawberry(fragment, uniforms),
         4 => fragment_shader_torus(fragment, uniforms),
         5 => fragment_shader_red_planet(fragment, uniforms),
+        6 => fragment_shader_star_flares(fragment, uniforms),
         _ => fragment_shader_crater_hybrid(fragment, uniforms),
     }
 }
