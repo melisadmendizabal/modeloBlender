@@ -1,4 +1,4 @@
-# 🌌 Laboratorio: Static Shaders — Rama `Sol`
+# 🌌 Laboratorio: Dynamic Shaders — Rama `Sol`
 
 ## 🎯 Descripción
 En este laboratorio se practica el diseño procedural de una estrella (Sol) utilizando shaders en Rust.
