@@ -14,7 +14,7 @@ El resultado es una animación continua y cíclica, controlada mediante una vari
 ---
 
 ## 🪐 Sol
-
+(se mira bien trabado porque le tuve que bajar calidad al vídeo para poder subirlo)
 
 
 
