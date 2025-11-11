@@ -17,8 +17,8 @@ El resultado es una animación continua y cíclica, controlada mediante una vari
 
 
 
-![Uploading Sol (1).gif…]()
 
+![Sol (1)](https://github.com/user-attachments/assets/5cca31c3-cecb-4b1f-a973-1fc974d4e446)
 
 
 
