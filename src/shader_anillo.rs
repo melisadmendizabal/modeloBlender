@@ -160,9 +160,9 @@ pub fn fragment_shader_torus(fragment: &Fragment, uniforms: &Uniforms) -> Fragme
 
 
 pub fn fragment_shader_personalizado(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput  {
-    let base = Vector3::new(0.9, 0.8, 0.6);
+    let base = Vector3::new(1.0, 0.28, 0.9);
     let bands = ((fragment.world_position.y * 12.0).sin() * 0.5 + 0.5).powf(1.5);
-    let ring_color = Vector3::new(0.8, 0.7, 0.5);
+    let ring_color = Vector3::new(0.6, 0.7, 0.89);
 
     let mut color = base * (1.0 - bands) + ring_color * bands * 0.7;
 
@@ -175,7 +175,7 @@ pub fn fragment_shader_personalizado(fragment: &Fragment, uniforms: &Uniforms) -
     let final_color = color * intensity;
     FragmentOutput {
         color: final_color,
-        alpha: 1.0, // 👈 este shader será semitransparente
+        alpha: 0.7, // 👈 este shader será semitransparente
     }
 }
 

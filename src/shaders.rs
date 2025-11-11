@@ -14,6 +14,8 @@ use crate::shader_anillo::fragment_shader_torus;
 use crate::shader_anillo::fragment_shader_personalizado;
 use crate::shader_strawberry::fragment_shader_strawberry;
 use crate::shader_gaseoso::fragment_shader_gaseoso;
+use crate::shader_rocoso::fragment_shader_crater_hybrid;
+use crate::shader_rojo::fragment_shader_red_planet;
 
 
 
@@ -214,14 +216,12 @@ pub fn fragment_shader_compuesto(fragment: &Fragment, uniforms: &Uniforms) -> Fr
 pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     match uniforms.shader_mode {
         //0 => fragment_shader_papel(fragment, uniforms),
-        1 => fragment_shader_compuesto(fragment, uniforms),
+        1 => fragment_shader_crater_hybrid(fragment, uniforms),
         2 => fragment_shader_gaseoso(fragment, uniforms),
         3 => fragment_shader_strawberry(fragment, uniforms),
         4 => fragment_shader_torus(fragment, uniforms),
-        _ => FragmentOutput {
-        color: Vector3::new(1.0, 0.0, 1.0),
-        alpha: 1.0, // 👈 este shader será semitransparente
-    }
+        5 => fragment_shader_red_planet(fragment, uniforms),
+        _ => fragment_shader_crater_hybrid(fragment, uniforms),
     }
 }
 

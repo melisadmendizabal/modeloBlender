@@ -12,6 +12,8 @@ mod light;
 mod shader_anillo;
 mod shader_strawberry;
 mod shader_gaseoso;
+mod shader_rocoso;
+mod shader_rojo;
 
 use matrix::{create_model_matrix, create_projection_matrix, create_viewport_matrix};
 use camera::Camera;
@@ -30,6 +32,8 @@ use shader_anillo::fragment_shader_personalizado;
 use shader_anillo::fragment_shader_torus;
 use shader_strawberry::fragment_shader_strawberry;
 use shader_gaseoso::fragment_shader_gaseoso;
+use shader_rocoso::fragment_shader_crater_hybrid;
+use shader_rojo::fragment_shader_red_planet;
 use crate::shaders::fragment_shader_rocoso;
 use crate::fragment::Fragment;
 use crate::fragment::FragmentOutput;
@@ -213,6 +217,9 @@ fn main() {
         if window.is_key_pressed(KeyboardKey::KEY_FOUR) {
             current_shader = 4; // Nuevo shader: toroide
         }
+        if window.is_key_pressed(KeyboardKey::KEY_FIVE) {
+            current_shader = 5; // Nuevo shader: toroide
+        }
 
         // Actualizar uniforms
         uniforms.time = get_current_time_seconds();
@@ -228,11 +235,12 @@ fn main() {
         } else {
             // Renderizar normalmente según el shader seleccionado
             let shader_fn = match current_shader {
-                1 => fragment_shader_rocoso,
+                1 => fragment_shader_crater_hybrid,
                 2 => fragment_shader_gaseoso,
                 3 => fragment_shader_strawberry,
                 4 => fragment_shader_torus,
-                _ => fragment_shader_personalizado,
+                5 => fragment_shader_red_planet,
+                _ => fragment_shader_crater_hybrid,
             };
             render(&mut framebuffer, &uniforms, &vertex_array, &light, shader_fn);
         }
@@ -244,7 +252,7 @@ fn main() {
         let mut d = window.begin_drawing(&raylib_thread);
 
         // Dibujar un menú visual simple
-        let options = ["1. Planeta rocoso", "2. Planeta Gaseoso", "3. Planeta Fresita", "4 toroide",];
+        let options = ["1. Planeta Rocoso", "2. Planeta Gaseoso", "3. Planeta Fresita", "4. Planeta Anillos", "5. Planeta Rojo"];
         let start_y = 60;
         for (i, &option) in options.iter().enumerate() {
             let y = start_y + i as i32 * 25;
@@ -267,11 +275,12 @@ fn main() {
         //implementacion del menu
         // Mostrar el shader activo en pantalla
         let shader_name = match current_shader {
-            1 => "🪨 Planeta rocoso",
-            2 => "☁️ Gigante gaseoso",
-            3 => "🪐 Planeta personalizado",
-            4 => "toroide",
-            _ => "Shader desconocido",
+            1 => "*.°- Rocoso -°.*",
+            2 => "*.°- Gaseoso -°.*",
+            3 => "*.°- Fresita -°.*",
+            4 => "*.°- Anillos -°.*",
+            5 => "*.°- Rojito -°.*",
+            _ => "*.°- Rocoso -°.*",
         };
 
         d.draw_text(
