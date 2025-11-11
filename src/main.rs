@@ -9,6 +9,9 @@ mod obj;
 mod matrix;
 mod camera;
 mod light;
+mod shader_anillo;
+mod shader_strawberry;
+mod shader_gaseoso;
 
 use matrix::{create_model_matrix, create_projection_matrix, create_viewport_matrix};
 use camera::Camera;
@@ -22,10 +25,11 @@ use raylib::prelude::*;
 use std::thread;
 use std::time::Duration;
 use std::f32::consts::PI;
-use crate::shaders::generate_torus_vertices;
-use crate::shaders::fragment_shader_personalizado;
-use crate::shaders::fragment_shader_torus;
-use crate::shaders::fragment_shader_gaseoso;
+use shader_anillo::generate_torus_vertices;
+use shader_anillo::fragment_shader_personalizado;
+use shader_anillo::fragment_shader_torus;
+use shader_strawberry::fragment_shader_strawberry;
+use shader_gaseoso::fragment_shader_gaseoso;
 use crate::shaders::fragment_shader_rocoso;
 use crate::fragment::Fragment;
 use crate::fragment::FragmentOutput;
@@ -111,7 +115,7 @@ fn main() {
         .build();
 
     let mut framebuffer = Framebuffer::new(window_width as u32, window_height as u32);
-    framebuffer.set_background_color(Vector3::new(0.2,0.2,0.4)); //azul oscuro
+    framebuffer.set_background_color(Vector3::new(0.27,0.1,0.3)); //azul oscuro
 
     framebuffer.init_texture(&mut window, &raylib_thread);
 
@@ -214,7 +218,7 @@ fn main() {
         uniforms.time = get_current_time_seconds();
         uniforms.shader_mode = current_shader;
 
-        if current_shader == 3 {
+        if current_shader == 4 {
             // Renderizar planeta con su shader
             render(&mut framebuffer, &uniforms, &vertex_array, &light, fragment_shader_personalizado);
 
@@ -226,6 +230,7 @@ fn main() {
             let shader_fn = match current_shader {
                 1 => fragment_shader_rocoso,
                 2 => fragment_shader_gaseoso,
+                3 => fragment_shader_strawberry,
                 4 => fragment_shader_torus,
                 _ => fragment_shader_personalizado,
             };
@@ -239,7 +244,7 @@ fn main() {
         let mut d = window.begin_drawing(&raylib_thread);
 
         // Dibujar un menú visual simple
-        let options = ["1. 🪨 Planeta rocoso", "2. ☁️ Gigante gaseoso", "3. 🪐 Planeta personalizado", "4 toroide"];
+        let options = ["1. Planeta rocoso", "2. Planeta Gaseoso", "3. Planeta Fresita", "4 toroide",];
         let start_y = 60;
         for (i, &option) in options.iter().enumerate() {
             let y = start_y + i as i32 * 25;
@@ -265,6 +270,7 @@ fn main() {
             1 => "🪨 Planeta rocoso",
             2 => "☁️ Gigante gaseoso",
             3 => "🪐 Planeta personalizado",
+            4 => "toroide",
             _ => "Shader desconocido",
         };
 
