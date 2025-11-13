@@ -15,6 +15,7 @@ mod shader_gaseoso;
 mod shader_rocoso;
 mod shader_rojo;
 mod shader_sol;
+mod sistema_solar;
 
 use matrix::{create_model_matrix, create_projection_matrix, create_viewport_matrix};
 use camera::Camera;
@@ -35,6 +36,7 @@ use shader_strawberry::fragment_shader_strawberry;
 use shader_gaseoso::fragment_shader_gaseoso;
 use shader_rocoso::fragment_shader_crater_hybrid;
 use shader_rojo::fragment_shader_red_planet;
+use sistema_solar::{SolarSystem, create_default_solar_system, get_orbit_points};
 //use shader_sol::fragment_shader_star;
 use shader_sol::fragment_shader_star_flares;
 use shader_sol::vertex_shader_star;
@@ -112,6 +114,7 @@ fn get_current_time_seconds(start_time: &Instant) -> f32 {
     start_time.elapsed().as_secs_f32()
 }
 
+
 fn main() {
     let window_width = 1300;
     let window_height = 900;
@@ -119,86 +122,53 @@ fn main() {
 
     let (mut window, raylib_thread) = raylib::init()
         .size(window_width, window_height)
-        .title("Planetitas :D")
+        .title("Sistema Solar 🌍☀️")
         .log_level(TraceLogLevel::LOG_WARNING)
         .build();
 
     let mut framebuffer = Framebuffer::new(window_width as u32, window_height as u32);
-    framebuffer.set_background_color(Vector3::new(0.27,0.1,0.3)); //azul oscuro
-
+    framebuffer.set_background_color(Vector3::new(0.0, 0.0, 0.05)); // Espacio oscuro
     framebuffer.init_texture(&mut window, &raylib_thread);
 
-
-
-   
-    framebuffer.texture.as_mut().map(|tex| {
-        let colors = framebuffer.image.get_image_data();
-        let data: &[u8] = unsafe {
-            std::slice::from_raw_parts(colors.as_ptr() as *const u8, colors.len() * 4)
-        };
-        tex.update_texture(data).unwrap();
-    });
-
-
-
-    let translation = Vector3::new(0.0, 0.0, 0.0);
-    let rotation_y = 0.0f32;
+    // ============================================
+    // CREAR SISTEMA SOLAR
+    // ============================================
+    let mut solar_system = create_default_solar_system();
+    solar_system.time_scale = 1.0; // Velocidad normal del tiempo
     
     // ============================================
-    // NUEVO: Sistema de rotación configurable
+    // CÁMARA - Ahora se mueve en el plano eclíptico
     // ============================================
-    let mut auto_rotate = true;              // Toggle rotación automática
-    let rotation_speed_y = 0.3f32;       // Velocidad rotación Y (izq/der)
-    let rotation_speed_x = 0.0f32;       // Velocidad rotación X (arriba/abajo)
-    let rotation_speed_z = 0.0f32;       // Velocidad rotación Z (inclinación)
-    
-    let mut rotation_x = 0.0f32;
-    let mut rotation_z = 0.0f32;
-    
-    // Configuraciones preestablecidas por planeta
-    let current_preset = 0; // 0 = custom, 1-5 = presets
-    
-    let scale = 1.0f32;
-
-
-
-
-
-    let camera_position = Vector3::new(0.0, 1.0, 5.0);
-    let camera_target = Vector3::new(0.0, 0.0, 0.0);
-    let camera_up = Vector3::new(0.0, 1.0, 0.0);
-    // Inicializar cámara
     let mut camera = Camera::new(
-        camera_position,
-        camera_target,
-        camera_up
+        Vector3::new(0.0, 15.0, 25.0),  // Vista desde arriba y atrás
+        Vector3::new(0.0, 0.0, 0.0),    // Mirando al sol
+        Vector3::new(0.0, 1.0, 0.0),
     );
-
+    
+    // ============================================
+    // CONFIGURACIÓN
+    // ============================================
     let fov_y = PI / 3.0;
     let aspect = window_width as f32 / window_height as f32;
     let near = 0.1;
-    let far = 100.0;
-
-    // Parámetros de transformación del modelo (fijos)
-    let translation = Vector3::new(0.0, 0.0, 0.0);
-    let mut rotation_y = 0.0f32;
-    let rotation_speed = 0.0f32;
-    let scale = 1.0f32;
-      // Light
-
-    let light = Light::new(Vector3::new(5.0, 5.0, 5.0));
-
-    //let obj = Obj::load("./Models/barco.obj").expect("Failed to load obj");
-    //let obj = Obj::load("./Models/cuboo.obj").expect("Failed to load obj");
+    let far = 200.0; // Mayor para ver todo el sistema
+    
+    let light = Light::new(Vector3::new(0.0, 5.0, 0.0)); // Luz desde el sol
+    
+    // Cargar modelo de esfera
     let obj = Obj::load("./Models/sphere.obj").expect("Failed to load obj");
-
-  
-
-    // vertex_array ya es Vec<Vertex> gracias a los cambios en obj.rs
     let vertex_array = obj.get_vertex_array();
-
-    //menu de los shaders
-    let mut current_shader = 6;
+    
+    // ============================================
+    // MODOS DE VISUALIZACIÓN
+    // ============================================
+    let mut show_orbits = true;
+    let mut follow_planet: Option<usize> = None; // None = vista libre
+    let mut paused = false;
+    
+    // ============================================
+    // UNIFORMS
+    // ============================================
     let mut uniforms = Uniforms {
         model_matrix: Matrix::identity(),
         view_matrix: Matrix::identity(),
@@ -207,152 +177,261 @@ fn main() {
         time: 0.0,
         shader_mode: 0,
     };
+    
+    let mut last_frame_time = start_time;
 
-
+    // ============================================
+    // LOOP PRINCIPAL
+    // ============================================
     while !window.window_should_close() {
-        camera.process_input(&window);
-
-        if window.is_key_pressed(KeyboardKey::KEY_SPACE) {
-            auto_rotate = !auto_rotate;
-            println!("Auto-rotación: {}", if auto_rotate { "ON" } else { "OFF" });
-        }
-
-        if auto_rotate {
-            rotation_y += rotation_speed_y * 0.1;  // Multiplicador para suavizar
-            rotation_x += rotation_speed_x * 0.01;
-            rotation_z += rotation_speed_z * 0.01;
-        }
-
-        rotation_y += rotation_speed;
+        // Calcular delta time
+        let current_time = Instant::now();
+        let delta_time = current_time.duration_since(last_frame_time).as_secs_f32();
+        last_frame_time = current_time;
         
+        // ============================================
+        // INPUT - Controles adicionales
+        // ============================================
+        camera.process_input(&window);
+        
+        // ESPACIO: Pausar/Reanudar
+        if window.is_key_pressed(KeyboardKey::KEY_SPACE) {
+            paused = !paused;
+        }
+        
+        // O: Toggle órbitas
+        if window.is_key_pressed(KeyboardKey::KEY_O) {
+            show_orbits = !show_orbits;
+        }
+        
+        // + / -: Velocidad del tiempo
+        if window.is_key_pressed(KeyboardKey::KEY_EQUAL) {
+            solar_system.time_scale *= 1.5;
+            println!("Velocidad: {:.1}x", solar_system.time_scale);
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_MINUS) {
+            solar_system.time_scale /= 1.5;
+            println!("Velocidad: {:.1}x", solar_system.time_scale);
+        }
+        
+        // F1-F6: Seguir planetas
+        if window.is_key_pressed(KeyboardKey::KEY_F1) {
+            follow_planet = Some(0);
+            println!("Siguiendo: {}", solar_system.planets[0].name);
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_F2) {
+            follow_planet = Some(1);
+            println!("Siguiendo: {}", solar_system.planets[1].name);
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_F3) {
+            follow_planet = Some(2);
+            println!("Siguiendo: {}", solar_system.planets[2].name);
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_F4) {
+            follow_planet = Some(3);
+            println!("Siguiendo: {}", solar_system.planets[3].name);
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_F5) {
+            follow_planet = Some(4);
+            println!("Siguiendo: {}", solar_system.planets[4].name);
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_F6) {
+            follow_planet = Some(5);
+            println!("Siguiendo: {}", solar_system.planets[5].name);
+        }
+        if window.is_key_pressed(KeyboardKey::KEY_ESCAPE) {
+            follow_planet = None;
+            println!("Cámara libre");
+        }
+        
+        // ============================================
+        // ACTUALIZAR SISTEMA SOLAR
+        // ============================================
+        if !paused {
+            solar_system.update(delta_time);
+        }
+        
+        // ============================================
+        // ACTUALIZAR CÁMARA (seguir planeta si está activo)
+        // ============================================
+        if let Some(planet_idx) = follow_planet {
+            if planet_idx < solar_system.planets.len() {
+                let planet = &solar_system.planets[planet_idx];
+                let planet_pos = planet.get_position();
+                
+                // Cámara sigue al planeta desde atrás y arriba
+                camera.target = planet_pos;
+                camera.eye = Vector3::new(
+                    planet_pos.x - 5.0,
+                    planet_pos.y + 3.0,
+                    planet_pos.z - 5.0,
+                );
+            }
+        }
+        
+        // ============================================
+        // RENDERIZAR
+        // ============================================
         framebuffer.clear();
-
-        let rotation = Vector3::new(rotation_x, rotation_y, rotation_z);
-        // Crear matrices de transformación
-        let model_matrix = create_model_matrix (translation, scale, rotation);
+        
         let view_matrix = camera.get_view_matrix();
         let projection_matrix = create_projection_matrix(fov_y, aspect, near, far);
         let viewport_matrix = create_viewport_matrix(0.0, 0.0, window_width as f32, window_height as f32);
-
-        // Crear uniforms
-        uniforms.model_matrix = model_matrix;
+        
         uniforms.view_matrix = view_matrix;
         uniforms.projection_matrix = projection_matrix;
         uniforms.viewport_matrix = viewport_matrix;
-
-
-        if window.is_key_pressed(KeyboardKey::KEY_ONE) {
-            current_shader = 1;
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_TWO) {
-            current_shader = 2;
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_THREE) {
-            current_shader = 3;
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_FOUR) {
-            current_shader = 4; // Nuevo shader: toroide
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_FIVE) {
-            current_shader = 5; // Nuevo shader: toroide
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_SIX) {
-            current_shader = 6; // Nuevo shader: toroide
-        }
-
-        // Actualizar uniforms
         uniforms.time = get_current_time_seconds(&start_time);
-        uniforms.shader_mode = current_shader;
-
-        if current_shader == 4 {
-            // Renderizar planeta con su shader
+        
+        // ============================================
+        // 1. RENDERIZAR SOL (centro del sistema)
+        // ============================================
+        let sun_translation = Vector3::new(0.0, 0.0, 0.0);
+        let sun_rotation = Vector3::new(0.0, uniforms.time * 0.1, 0.0);
+        let sun_scale = solar_system.sun_scale;
+        
+        uniforms.model_matrix = create_model_matrix(sun_translation, sun_scale, sun_rotation);
+        uniforms.shader_mode = 6; // Modo sol
+        
+        render(
+            &mut framebuffer,
+            &uniforms,
+            &vertex_array,
+            &light,
+            vertex_shader_star,
+            fragment_shader_star_flares,
+        );
+        
+        // ============================================
+        // 2. RENDERIZAR PLANETAS
+        // ============================================
+        for (idx, planet) in solar_system.planets.iter().enumerate() {
+            let position = planet.get_position();
+            let rotation = planet.get_rotation();
+            
+            uniforms.model_matrix = create_model_matrix(position, planet.scale, rotation);
+            uniforms.shader_mode = idx as i32 + 1;
+            
+            // Renderizar planeta con sus shaders específicos
             render(
-                &mut framebuffer, 
-                &uniforms, 
-                &vertex_array, 
-                &light, 
-                vertex_shader,
-                fragment_shader_personalizado);
-
-            // Generar y renderizar toroide con su shader
-            let torus_vertices = generate_torus_vertices(&uniforms);
-            render(&mut framebuffer, &uniforms, &torus_vertices, &light, vertex_shader, fragment_shader_torus);
-
-        } else if current_shader == 6 {
-            // ✨ SOL - USA VERTEX SHADER PERSONALIZADO
-            render(
-                &mut framebuffer, 
-                &uniforms, 
-                &vertex_array, 
-                &light, 
-                vertex_shader_star,        // ✅ Vertex shader del sol!
-                fragment_shader_star_flares // ✅ Fragment shader del sol!
+                &mut framebuffer,
+                &uniforms,
+                &vertex_array,
+                &light,
+                planet.vertex_shader,
+                planet.fragment_shader,
             );
-
-        } else {
-            // Renderizar normalmente según el shader seleccionado
-            let shader_fn = match current_shader {
-                1 => fragment_shader_crater_hybrid,
-                2 => fragment_shader_gaseoso,
-                3 => fragment_shader_strawberry,
-                4 => fragment_shader_torus,
-                5 => fragment_shader_red_planet,
-                _ => fragment_shader_crater_hybrid,
-            };
-            render(&mut framebuffer, &uniforms, &vertex_array, &light,vertex_shader, shader_fn);
+            
+            // CASO ESPECIAL: Planetas con anillos (Júpiter, Saturno)
+            if planet.name == "Júpiter" || planet.name == "Saturno" {
+                let torus_vertices = generate_torus_vertices(&uniforms);
+                render(
+                    &mut framebuffer,
+                    &uniforms,
+                    &torus_vertices,
+                    &light,
+                    vertex_shader,
+                    fragment_shader_torus,
+                );
+            }
         }
-
-
-
+        
+        // ============================================
+        // SWAP Y UI
+        // ============================================
         framebuffer.swap_buffers(&mut window, &raylib_thread);
-
+        
         let mut d = window.begin_drawing(&raylib_thread);
-
-        // Dibujar un menú visual simple
-        let options = ["1. Planeta Rocoso", "2. Planeta Gaseoso", "3. Planeta Fresita", "4. Planeta Anillos", "5. Planeta Rojo", "6. Sol"];
-        let start_y = 60;
-        for (i, &option) in options.iter().enumerate() {
-            let y = start_y + i as i32 * 25;
-            let color = if i as i32 + 1 == current_shader {
-                Color::YELLOW // resalta el shader activo
+        
+        // ============================================
+        // UI: Información del sistema
+        // ============================================
+        let ui_x = 20;
+        let ui_y = 20;
+        let line_h = 22;
+        
+        d.draw_text("=== SISTEMA SOLAR ===", ui_x, ui_y, 20, Color::YELLOW);
+        
+        d.draw_text(
+            &format!("Tiempo: {:.1}s ({}x)", uniforms.time, solar_system.time_scale),
+            ui_x,
+            ui_y + line_h,
+            16,
+            if paused { Color::RED } else { Color::WHITE },
+        );
+        
+        if let Some(idx) = follow_planet {
+            d.draw_text(
+                &format!("Siguiendo: {}", solar_system.planets[idx].name),
+                ui_x,
+                ui_y + line_h * 2,
+                16,
+                Color::GREEN,
+            );
+        } else {
+            d.draw_text("Cámara libre", ui_x, ui_y + line_h * 2, 16, Color::LIGHTGRAY);
+        }
+        
+        // Lista de planetas
+        d.draw_text("=== PLANETAS ===", ui_x, ui_y + line_h * 4, 18, Color::YELLOW);
+        for (i, planet) in solar_system.planets.iter().enumerate() {
+            let color = if Some(i) == follow_planet {
+                Color::GREEN
             } else {
                 Color::RAYWHITE
             };
-            d.draw_text(option, 20, y, 20, color);
+            d.draw_text(
+                &format!("F{}: {}", i + 1, planet.name),
+                ui_x,
+                ui_y + line_h * (5 + i as i32),
+                14,
+                color,
+            );
         }
-
-
+        
+        // Controles
+        let controls_y = ui_y + line_h * 12;
+        d.draw_text("=== CONTROLES ===", ui_x, controls_y, 18, Color::YELLOW);
+        
+        let controls = [
+            "WASD: Rotar cámara",
+            "↑↓: Zoom",
+            "SPACE: Pausar",
+            "O: Órbitas",
+            "+/-: Velocidad tiempo",
+            "F1-F6: Seguir planeta",
+            "ESC: Cámara libre",
+        ];
+        
+        for (i, &control) in controls.iter().enumerate() {
+            d.draw_text(
+                control,
+                ui_x,
+                controls_y + line_h * (i as i32 + 1),
+                12,
+                Color::LIGHTGRAY,
+            );
+        }
+        
+        // Crosshair (opcional)
         let center_x = window_width / 2;
         let center_y = window_height / 2;
-        let crosshair_size = 10;
-
-        d.draw_line(center_x - crosshair_size, center_y, center_x + crosshair_size, center_y, Color::WHITE);
-        d.draw_line(center_x, center_y - crosshair_size, center_x, center_y + crosshair_size, Color::WHITE);
-
-        //implementacion del menu
-        // Mostrar el shader activo en pantalla
-        let shader_name = match current_shader {
-            1 => "*.°- Rocoso -°.*",
-            2 => "*.°- Gaseoso -°.*",
-            3 => "*.°- Fresita -°.*",
-            4 => "*.°- Anillos -°.*",
-            5 => "*.°- Rojito -°.*",
-            6 => "*.°- Sol _°.*",
-            _ => "*.°- Rocoso -°.*",
-        };
-
-        d.draw_text(
-            &format!("Time: {:.1}s", uniforms.time),
-            window_width - 150,
-            15,
-            20,
-            Color::LIGHTGRAY,
+        let crosshair_size = 5;
+        d.draw_line(
+            center_x - crosshair_size,
+            center_y,
+            center_x + crosshair_size,
+            center_y,
+            Color::new(255, 255, 255, 100),
         );
-
-
+        d.draw_line(
+            center_x,
+            center_y - crosshair_size,
+            center_x,
+            center_y + crosshair_size,
+            Color::new(255, 255, 255, 100),
+        );
         
         thread::sleep(Duration::from_millis(16));
     }
 }
-
-
