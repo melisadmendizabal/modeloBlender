@@ -108,29 +108,74 @@ pub fn create_model_matrix(translation: Vector3, scale: f32, rotation: Vector3) 
 /// Creates a view matrix using camera position, target, and up vector
 /// This implements a lookAt matrix for camera transformations
 pub fn create_view_matrix(eye: Vector3, target: Vector3, up: Vector3) -> Matrix {
-    // Calculate forward vector (from eye to target, normalized)
+    // Calculate forward vector (from eye to target)
     let mut forward = Vector3::new(
         target.x - eye.x,
         target.y - eye.y,
         target.z - eye.z,
     );
+    
+    // 🛡️ PROTECCIÓN: Verificar que forward no sea cero
+    let forward_length_sq = forward.x * forward.x + forward.y * forward.y + forward.z * forward.z;
+    
+    if forward_length_sq < 0.000001 {
+        eprintln!("❌ ERROR en create_view_matrix: forward vector es casi cero!");
+        eprintln!("   eye: ({:.3}, {:.3}, {:.3})", eye.x, eye.y, eye.z);
+        eprintln!("   target: ({:.3}, {:.3}, {:.3})", target.x, target.y, target.z);
+        
+        // Retornar matriz identidad como fallback
+        return Matrix::identity();
+    }
+    
     // Normalize forward
-    let forward_length = (forward.x * forward.x + forward.y * forward.y + forward.z * forward.z).sqrt();
+    let forward_length = forward_length_sq.sqrt();
     forward.x /= forward_length;
     forward.y /= forward_length;
     forward.z /= forward_length;
 
-    // Calculate right vector (cross product of forward and up, normalized)
+    // Calculate right vector (cross product of forward and up)
     let mut right = Vector3::new(
         forward.y * up.z - forward.z * up.y,
         forward.z * up.x - forward.x * up.z,
         forward.x * up.y - forward.y * up.x,
     );
-    // Normalize right
-    let right_length = (right.x * right.x + right.y * right.y + right.z * right.z).sqrt();
-    right.x /= right_length;
-    right.y /= right_length;
-    right.z /= right_length;
+    
+    // 🛡️ PROTECCIÓN: Verificar que right no sea cero
+    let right_length_sq = right.x * right.x + right.y * right.y + right.z * right.z;
+    
+    if right_length_sq < 0.000001 {
+        eprintln!("⚠️ WARNING en create_view_matrix: right vector casi cero (forward y up son paralelos)");
+        
+        // Usar un up alternativo si forward y up son paralelos
+        let alt_up = if forward.y.abs() < 0.9 {
+            Vector3::new(0.0, 1.0, 0.0)
+        } else {
+            Vector3::new(1.0, 0.0, 0.0)
+        };
+        
+        right = Vector3::new(
+            forward.y * alt_up.z - forward.z * alt_up.y,
+            forward.z * alt_up.x - forward.x * alt_up.z,
+            forward.x * alt_up.y - forward.y * alt_up.x,
+        );
+        
+        let right_length_sq2 = right.x * right.x + right.y * right.y + right.z * right.z;
+        if right_length_sq2 < 0.000001 {
+            eprintln!("❌ ERROR: No se pudo calcular right vector válido");
+            return Matrix::identity();
+        }
+        
+        let right_length = right_length_sq2.sqrt();
+        right.x /= right_length;
+        right.y /= right_length;
+        right.z /= right_length;
+    } else {
+        // Normalize right
+        let right_length = right_length_sq.sqrt();
+        right.x /= right_length;
+        right.y /= right_length;
+        right.z /= right_length;
+    }
 
     // Calculate actual up vector (cross product of right and forward)
     let actual_up = Vector3::new(
@@ -140,7 +185,6 @@ pub fn create_view_matrix(eye: Vector3, target: Vector3, up: Vector3) -> Matrix 
     );
 
     // Create the view matrix (inverse of camera transformation)
-    // This is the lookAt matrix formula
     new_matrix4(
         right.x, right.y, right.z, -(right.x * eye.x + right.y * eye.y + right.z * eye.z),
         actual_up.x, actual_up.y, actual_up.z, -(actual_up.x * eye.x + actual_up.y * eye.y + actual_up.z * eye.z),
@@ -148,7 +192,6 @@ pub fn create_view_matrix(eye: Vector3, target: Vector3, up: Vector3) -> Matrix 
         0.0, 0.0, 0.0, 1.0,
     )
 }
-
 /// Creates a perspective projection matrix
 /// fov_y: Field of view in radians (vertical)
 /// aspect: Aspect ratio (width / height)

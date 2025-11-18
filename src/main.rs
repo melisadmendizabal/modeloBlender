@@ -36,6 +36,7 @@ use shader_strawberry::fragment_shader_strawberry;
 use shader_gaseoso::fragment_shader_gaseoso;
 use shader_rocoso::fragment_shader_crater_hybrid;
 use shader_rojo::fragment_shader_red_planet;
+use crate::shaders::fragment_shader_papel;
 use sistema_solar::{SolarSystem, create_default_solar_system, get_orbit_points};
 //use shader_sol::fragment_shader_star;
 use shader_sol::fragment_shader_star_flares;
@@ -122,53 +123,43 @@ fn main() {
 
     let (mut window, raylib_thread) = raylib::init()
         .size(window_width, window_height)
-        .title("Sistema Solar 🌍☀️")
+        .title("Sistema Solar 🚀 - Debug Mode")
         .log_level(TraceLogLevel::LOG_WARNING)
         .build();
 
     let mut framebuffer = Framebuffer::new(window_width as u32, window_height as u32);
-    framebuffer.set_background_color(Vector3::new(0.0, 0.0, 0.05)); // Espacio oscuro
+    framebuffer.set_background_color(Vector3::new(0.0, 0.0, 0.05));
     framebuffer.init_texture(&mut window, &raylib_thread);
 
-    // ============================================
-    // CREAR SISTEMA SOLAR
-    // ============================================
-    let mut solar_system = create_default_solar_system();
-    solar_system.time_scale = 1.0; // Velocidad normal del tiempo
+    println!("✅ Cargando modelos...");
+    let obj = Obj::load("./Models/sphere.obj").expect("Failed to load obj");
+    let vertex_array = obj.get_vertex_array();
+    println!("✅ Esfera cargada: {} vértices", vertex_array.len());
+
+    let ship_obj = Obj::load("./Models/barcoPapel.obj").expect("Failed to load barco");
+    let ship_vertices = ship_obj.get_vertex_array();
+    println!("✅ Nave cargada: {} vértices", ship_vertices.len());
     
-    // ============================================
-    // CÁMARA - Ahora se mueve en el plano eclíptico
-    // ============================================
+    let mut solar_system = create_default_solar_system();
+    solar_system.time_scale = 1.0;
+    println!("✅ Sistema solar creado");
+    
     let mut camera = Camera::new(
-        Vector3::new(0.0, 15.0, 25.0),  // Vista desde arriba y atrás
-        Vector3::new(0.0, 0.0, 0.0),    // Mirando al sol
+        Vector3::new(0.0, 5.0, 15.0),
+        Vector3::new(0.0, 0.0, 0.0),
         Vector3::new(0.0, 1.0, 0.0),
     );
     
-    // ============================================
-    // CONFIGURACIÓN
-    // ============================================
     let fov_y = PI / 3.0;
     let aspect = window_width as f32 / window_height as f32;
     let near = 0.1;
-    let far = 200.0; // Mayor para ver todo el sistema
+    let far = 200.0;
     
-    let light = Light::new(Vector3::new(0.0, 5.0, 0.0)); // Luz desde el sol
+    let light = Light::new(Vector3::new(0.0, 5.0, 0.0));
     
-    // Cargar modelo de esfera
-    let obj = Obj::load("./Models/sphere.obj").expect("Failed to load obj");
-    let vertex_array = obj.get_vertex_array();
-    
-    // ============================================
-    // MODOS DE VISUALIZACIÓN
-    // ============================================
     let mut show_orbits = true;
-    let mut follow_planet: Option<usize> = None; // None = vista libre
     let mut paused = false;
     
-    // ============================================
-    // UNIFORMS
-    // ============================================
     let mut uniforms = Uniforms {
         model_matrix: Matrix::identity(),
         view_matrix: Matrix::identity(),
@@ -179,99 +170,115 @@ fn main() {
     };
     
     let mut last_frame_time = start_time;
+    let mut frame_count = 0u64;
 
-    // ============================================
-    // LOOP PRINCIPAL
-    // ============================================
+    println!("🚀 Iniciando loop principal...\n");
+    println!("💡 Tip: Presiona ESC para salir limpiamente\n");
+
     while !window.window_should_close() {
-        // Calcular delta time
         let current_time = Instant::now();
         let delta_time = current_time.duration_since(last_frame_time).as_secs_f32();
         last_frame_time = current_time;
         
-        // ============================================
-        // INPUT - Controles adicionales
-        // ============================================
-        camera.process_input(&window);
+        frame_count += 1;
+        let elapsed = get_current_time_seconds(&start_time);
         
-        // ESPACIO: Pausar/Reanudar
-        if window.is_key_pressed(KeyboardKey::KEY_SPACE) {
-            paused = !paused;
+        // 🔍 DEBUG: Log cada segundo
+        if frame_count % 60 == 0 {
+            println!("⏱️  Frame {}: t={:.2}s | Ship pos=({:.1}, {:.1}, {:.1}) | yaw={:.2} pitch={:.2}",
+                frame_count,
+                elapsed,
+                solar_system.spaceship.position.x,
+                solar_system.spaceship.position.y,
+                solar_system.spaceship.position.z,
+                solar_system.spaceship.yaw,
+                solar_system.spaceship.pitch
+            );
         }
         
-        // O: Toggle órbitas
+        // 🔍 DEBUG: Log específico cerca del segundo 9.3
+        if elapsed > 9.0 && elapsed < 10.0 && frame_count % 10 == 0 {
+            println!("🔴 CERCA DEL SEGUNDO 9.3!");
+            println!("   Camera eye: ({:.2}, {:.2}, {:.2})", 
+                camera.eye.x, camera.eye.y, camera.eye.z);
+            println!("   Camera target: ({:.2}, {:.2}, {:.2})", 
+                camera.target.x, camera.target.y, camera.target.z);
+        }
+        
+        // INPUT
+        solar_system.spaceship.process_input(&window);
+        
+        if window.is_key_pressed(KeyboardKey::KEY_SPACE) {
+            paused = !paused;
+            println!("⏸️  Pausado: {}", paused);
+        }
+        
         if window.is_key_pressed(KeyboardKey::KEY_O) {
             show_orbits = !show_orbits;
         }
         
-        // + / -: Velocidad del tiempo
         if window.is_key_pressed(KeyboardKey::KEY_EQUAL) {
             solar_system.time_scale *= 1.5;
-            println!("Velocidad: {:.1}x", solar_system.time_scale);
+            println!("⏩ Velocidad: {:.1}x", solar_system.time_scale);
         }
         if window.is_key_pressed(KeyboardKey::KEY_MINUS) {
             solar_system.time_scale /= 1.5;
-            println!("Velocidad: {:.1}x", solar_system.time_scale);
+            println!("⏪ Velocidad: {:.1}x", solar_system.time_scale);
+        }
+
+        // 🆕 H: Resetear posición de la nave (HOME)
+        if window.is_key_pressed(KeyboardKey::KEY_H) {
+            solar_system.spaceship.position = Vector3::new(80.0, 10.0, 45.0);
+            solar_system.spaceship.yaw = 0.0;
+            solar_system.spaceship.pitch = 0.0;
+            solar_system.spaceship.roll = 0.0;
+            println!("🏠 Nave reseteada a posición inicial");
+        }
+
+        if window.is_key_down(KeyboardKey::KEY_LEFT_SHIFT) {
+            if window.is_key_pressed(KeyboardKey::KEY_KP_8) {
+                solar_system.spaceship.camera_offset.y += 0.5;
+                println!("📷 Camera Y: {:.2}", solar_system.spaceship.camera_offset.y);
+            }
+            if window.is_key_pressed(KeyboardKey::KEY_KP_2) {
+                solar_system.spaceship.camera_offset.y -= 0.5;
+                println!("📷 Camera Y: {:.2}", solar_system.spaceship.camera_offset.y);
+            }
+            if window.is_key_pressed(KeyboardKey::KEY_KP_7) {
+                solar_system.spaceship.camera_offset.z += 0.5;
+                println!("📷 Camera Z: {:.2}", solar_system.spaceship.camera_offset.z);
+            }
+            if window.is_key_pressed(KeyboardKey::KEY_KP_9) {
+                solar_system.spaceship.camera_offset.z -= 0.5;
+                println!("📷 Camera Z: {:.2}", solar_system.spaceship.camera_offset.z);
+            }
         }
         
-        // F1-F6: Seguir planetas
-        if window.is_key_pressed(KeyboardKey::KEY_F1) {
-            follow_planet = Some(0);
-            println!("Siguiendo: {}", solar_system.planets[0].name);
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_F2) {
-            follow_planet = Some(1);
-            println!("Siguiendo: {}", solar_system.planets[1].name);
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_F3) {
-            follow_planet = Some(2);
-            println!("Siguiendo: {}", solar_system.planets[2].name);
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_F4) {
-            follow_planet = Some(3);
-            println!("Siguiendo: {}", solar_system.planets[3].name);
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_F5) {
-            follow_planet = Some(4);
-            println!("Siguiendo: {}", solar_system.planets[4].name);
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_F6) {
-            follow_planet = Some(5);
-            println!("Siguiendo: {}", solar_system.planets[5].name);
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_ESCAPE) {
-            follow_planet = None;
-            println!("Cámara libre");
+        // ACTUALIZAR CÁMARA
+        camera.eye = solar_system.spaceship.get_camera_position();
+        camera.target = solar_system.spaceship.get_camera_target();
+        
+        // Verificar si la cámara es válida
+        if camera.eye.x.is_nan() || camera.eye.y.is_nan() || camera.eye.z.is_nan() {
+            eprintln!("❌ ERROR: camera.eye tiene NaN!");
+            eprintln!("   Ship pos: ({:.2}, {:.2}, {:.2})", 
+                solar_system.spaceship.position.x,
+                solar_system.spaceship.position.y,
+                solar_system.spaceship.position.z
+            );
+            break;
         }
         
-        // ============================================
-        // ACTUALIZAR SISTEMA SOLAR
-        // ============================================
+        if camera.target.x.is_nan() || camera.target.y.is_nan() || camera.target.z.is_nan() {
+            eprintln!("❌ ERROR: camera.target tiene NaN!");
+            break;
+        }
+        
         if !paused {
             solar_system.update(delta_time);
         }
         
-        // ============================================
-        // ACTUALIZAR CÁMARA (seguir planeta si está activo)
-        // ============================================
-        if let Some(planet_idx) = follow_planet {
-            if planet_idx < solar_system.planets.len() {
-                let planet = &solar_system.planets[planet_idx];
-                let planet_pos = planet.get_position();
-                
-                // Cámara sigue al planeta desde atrás y arriba
-                camera.target = planet_pos;
-                camera.eye = Vector3::new(
-                    planet_pos.x - 5.0,
-                    planet_pos.y + 3.0,
-                    planet_pos.z - 5.0,
-                );
-            }
-        }
-        
-        // ============================================
         // RENDERIZAR
-        // ============================================
         framebuffer.clear();
         
         let view_matrix = camera.get_view_matrix();
@@ -281,17 +288,15 @@ fn main() {
         uniforms.view_matrix = view_matrix;
         uniforms.projection_matrix = projection_matrix;
         uniforms.viewport_matrix = viewport_matrix;
-        uniforms.time = get_current_time_seconds(&start_time);
+        uniforms.time = elapsed;
         
-        // ============================================
-        // 1. RENDERIZAR SOL (centro del sistema)
-        // ============================================
+        // SOL
         let sun_translation = Vector3::new(0.0, 0.0, 0.0);
         let sun_rotation = Vector3::new(0.0, uniforms.time * 0.1, 0.0);
         let sun_scale = solar_system.sun_scale;
         
         uniforms.model_matrix = create_model_matrix(sun_translation, sun_scale, sun_rotation);
-        uniforms.shader_mode = 6; // Modo sol
+        uniforms.shader_mode = 6;
         
         render(
             &mut framebuffer,
@@ -302,9 +307,7 @@ fn main() {
             fragment_shader_star_flares,
         );
         
-        // ============================================
-        // 2. RENDERIZAR PLANETAS
-        // ============================================
+        // PLANETAS
         for (idx, planet) in solar_system.planets.iter().enumerate() {
             let position = planet.get_position();
             let rotation = planet.get_rotation();
@@ -312,7 +315,6 @@ fn main() {
             uniforms.model_matrix = create_model_matrix(position, planet.scale, rotation);
             uniforms.shader_mode = idx as i32 + 1;
             
-            // Renderizar planeta con sus shaders específicos
             render(
                 &mut framebuffer,
                 &uniforms,
@@ -322,8 +324,7 @@ fn main() {
                 planet.fragment_shader,
             );
             
-            // CASO ESPECIAL: Planetas con anillos (Júpiter, Saturno)
-            if planet.name == "Júpiter" || planet.name == "Saturno" {
+            if planet.name == "Júpiter" {
                 let torus_vertices = generate_torus_vertices(&uniforms);
                 render(
                     &mut framebuffer,
@@ -336,102 +337,104 @@ fn main() {
             }
         }
         
-        // ============================================
-        // SWAP Y UI
-        // ============================================
+        // NAVE
+        let ship_position = solar_system.spaceship.get_world_position();
+        let ship_rotation = solar_system.spaceship.get_world_rotation();
+        
+        uniforms.model_matrix = create_model_matrix(
+            ship_position,
+            solar_system.spaceship.scale,
+            ship_rotation
+        );
+        uniforms.shader_mode = 99;
+        
+        render(
+            &mut framebuffer,
+            &uniforms,
+            &ship_vertices,
+            &light,
+            vertex_shader,
+            fragment_shader_papel,
+        );
+        
         framebuffer.swap_buffers(&mut window, &raylib_thread);
         
         let mut d = window.begin_drawing(&raylib_thread);
         
-        // ============================================
-        // UI: Información del sistema
-        // ============================================
         let ui_x = 20;
         let ui_y = 20;
         let line_h = 22;
         
-        d.draw_text("=== SISTEMA SOLAR ===", ui_x, ui_y, 20, Color::YELLOW);
+        d.draw_text("=== DEBUG MODE ===", ui_x, ui_y, 20, Color::RED);
         
         d.draw_text(
-            &format!("Tiempo: {:.1}s ({}x)", uniforms.time, solar_system.time_scale),
+            &format!("Frame: {} | Time: {:.2}s", frame_count, elapsed),
             ui_x,
             ui_y + line_h,
             16,
-            if paused { Color::RED } else { Color::WHITE },
+            Color::YELLOW,
         );
         
-        if let Some(idx) = follow_planet {
-            d.draw_text(
-                &format!("Siguiendo: {}", solar_system.planets[idx].name),
-                ui_x,
-                ui_y + line_h * 2,
-                16,
-                Color::GREEN,
-            );
-        } else {
-            d.draw_text("Cámara libre", ui_x, ui_y + line_h * 2, 16, Color::LIGHTGRAY);
-        }
+        d.draw_text(
+            &format!("Pos: ({:.1}, {:.1}, {:.1})", 
+                solar_system.spaceship.position.x,
+                solar_system.spaceship.position.y,
+                solar_system.spaceship.position.z
+            ),
+            ui_x,
+            ui_y + line_h * 2,
+            16,
+            Color::WHITE,
+        );
         
-        // Lista de planetas
-        d.draw_text("=== PLANETAS ===", ui_x, ui_y + line_h * 4, 18, Color::YELLOW);
-        for (i, planet) in solar_system.planets.iter().enumerate() {
-            let color = if Some(i) == follow_planet {
-                Color::GREEN
+        d.draw_text(
+            &format!("Yaw: {:.2} | Pitch: {:.2}", 
+                solar_system.spaceship.yaw,
+                solar_system.spaceship.pitch
+            ),
+            ui_x,
+            ui_y + line_h * 3,
+            16,
+            Color::LIGHTGRAY,
+        );
+        
+        // 🆕 MOSTRAR DISTANCIA AL PLANETA MÁS CERCANO
+        if let Some((idx, distance, name)) = solar_system.get_distance_to_closest_planet(solar_system.spaceship.position) {
+            let color = if distance < 3.0 {
+                Color::RED  // ¡Peligro! Muy cerca
+            } else if distance < 5.0 {
+                Color::ORANGE  // Advertencia
             } else {
-                Color::RAYWHITE
+                Color::GREEN  // Seguro
             };
+            
             d.draw_text(
-                &format!("F{}: {}", i + 1, planet.name),
+                &format!("Cerca de: {} ({:.1} unidades)", name, distance),
                 ui_x,
-                ui_y + line_h * (5 + i as i32),
-                14,
+                ui_y + line_h * 4,
+                16,
                 color,
             );
         }
         
-        // Controles
-        let controls_y = ui_y + line_h * 12;
-        d.draw_text("=== CONTROLES ===", ui_x, controls_y, 18, Color::YELLOW);
-        
-        let controls = [
-            "WASD: Rotar cámara",
-            "↑↓: Zoom",
-            "SPACE: Pausar",
-            "O: Órbitas",
-            "+/-: Velocidad tiempo",
-            "F1-F6: Seguir planeta",
-            "ESC: Cámara libre",
-        ];
-        
-        for (i, &control) in controls.iter().enumerate() {
+        // 🆕 DETECTAR COLISIÓN
+        if let Some(planet_name) = solar_system.check_collision_with_planet(solar_system.spaceship.position, 2.0) {
             d.draw_text(
-                control,
+                &format!("⚠️ COLISIÓN CON {}!", planet_name),
                 ui_x,
-                controls_y + line_h * (i as i32 + 1),
-                12,
-                Color::LIGHTGRAY,
+                ui_y + line_h * 5,
+                18,
+                Color::RED,
             );
         }
         
-        // Crosshair (opcional)
+        // Crosshair
         let center_x = window_width / 2;
         let center_y = window_height / 2;
-        let crosshair_size = 5;
-        d.draw_line(
-            center_x - crosshair_size,
-            center_y,
-            center_x + crosshair_size,
-            center_y,
-            Color::new(255, 255, 255, 100),
-        );
-        d.draw_line(
-            center_x,
-            center_y - crosshair_size,
-            center_x,
-            center_y + crosshair_size,
-            Color::new(255, 255, 255, 100),
-        );
+        d.draw_circle(center_x, center_y, 3.0, Color::new(255, 0, 0, 150));
         
         thread::sleep(Duration::from_millis(16));
     }
+    
+    println!("\n✅ Programa terminado correctamente");
 }

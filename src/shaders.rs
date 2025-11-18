@@ -106,7 +106,7 @@ fn transform_normal(normal: &Vector3, model_matrix: &Matrix) -> Vector3 {
 
 
  /// Patrón tipo papel aplicado a fragmentos
-pub fn fragment_shader_papel(fragment: &Fragment, uniforms: &Uniforms) -> Vector3 {
+pub fn fragment_shader_papel(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     let base_color = Vector3::new(1.0, 1.0, 0.8); // beige claro
 
     // Configuración de las líneas del papel
@@ -132,31 +132,16 @@ pub fn fragment_shader_papel(fragment: &Fragment, uniforms: &Uniforms) -> Vector
     let mut normal = fragment.normal;
     normal.normalize(); 
 
-    let mut intensity = normal.dot(light_dir).max(0.0);
-    intensity = intensity.max(0.0);
-    let mut shaded_color = fragment.color * intensity;
-    shaded_color.x = shaded_color.x.min(255.0).max(0.0);
-    shaded_color.y = shaded_color.y.min(255.0).max(0.0);
-    shaded_color.z = shaded_color.z.min(255.0).max(0.0);
-
-    let a = color * intensity;
-
-    a
-
-    // Opcional: shading de luz simple sobre el papel, si carga la textura pero con cuadro negros
-    // let intensity = (fragment.normal.dot(Vector3::new(0.0, 0.0, 1.0))).max(0.0);
-    //color * intensity
-
-    //esto no soluciona los cuadros negros o mal transparentados y no carga la textura se mira gris
-    // let shaded_color = fragment.color * intensity;
-    //shaded_color
-    //color
-    //return (fragment.normal * 0.5) + Vector3::new(0.5, 0.5, 0.5);
-    //return Vector3::new(intensity, intensity, intensity);
+    let intensity = normal.dot(light_dir).max(0.3); // Luz ambiental mínima
     
-    //light_dir
+    let final_color = color * intensity;
 
-    //el problema es con la normal no importa si está normalizada
+    FragmentOutput {
+        color: final_color,
+        alpha: 1.0,  // Opaco
+    }
+
+  
     
 }
 
