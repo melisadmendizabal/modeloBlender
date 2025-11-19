@@ -1,6 +1,4 @@
-// ============================================
-// NUEVO ARCHIVO: solar_system.rs
-// ============================================
+// sistema_solar.rs - CON SISTEMA DE COLISIONES
 
 use raylib::prelude::*;
 use crate::vertex::Vertex;
@@ -8,33 +6,21 @@ use crate::fragment::{Fragment, FragmentOutput};
 use crate::Uniforms;
 use std::f32::consts::PI;
 
-// ============================================
-// Estructura de un Planeta en el Sistema Solar
-// ============================================
 pub struct Planet {
-    // Identificación
     pub name: String,
-    // Propiedades orbitales
-    pub orbit_radius: f32,        // Distancia al sol
-    pub orbit_speed: f32,         // Velocidad de traslación (rad/s)
-    pub orbit_angle: f32,         // Ángulo actual en la órbita
-    
-    // Propiedades de rotación
-    pub rotation_speed: f32,      // Velocidad de rotación sobre su eje
-    pub rotation_angle: f32,      // Ángulo actual de rotación
-    pub axis_tilt: f32,           // Inclinación del eje (opcional)
-    
-    // Propiedades físicas
-    pub scale: f32,               // Tamaño del planeta
-    pub color: Vector3,           // Color base (para debug)
-    
-    // Shaders
+    pub orbit_radius: f32,
+    pub orbit_speed: f32,
+    pub orbit_angle: f32,
+    pub rotation_speed: f32,
+    pub rotation_angle: f32,
+    pub axis_tilt: f32,
+    pub scale: f32,
+    pub color: Vector3,
     pub vertex_shader: fn(&Vertex, &Uniforms) -> Vertex,
     pub fragment_shader: fn(&Fragment, &Uniforms) -> FragmentOutput,
 }
 
 impl Planet {
-    /// Crear un nuevo planeta con parámetros básicos
     pub fn new(
         name: &str,
         orbit_radius: f32,
@@ -59,65 +45,54 @@ impl Planet {
         }
     }
     
-    /// Actualizar posición orbital y rotación del planeta
     pub fn update(&mut self, delta_time: f32) {
-        // Actualizar órbita (traslación)
-        self.orbit_angle += self.orbit_speed * delta_time;
-        
-        // Mantener el ángulo en [0, 2π]
-        if self.orbit_angle > std::f32::consts::PI * 2.0 {
-            self.orbit_angle -= std::f32::consts::PI * 2.0;
+        // Solo actualizar órbita si tiene radio > 0 (no es el Sol)
+        if self.orbit_radius > 0.0 {
+            self.orbit_angle += self.orbit_speed * delta_time;
+            
+            if self.orbit_angle > PI * 2.0 {
+                self.orbit_angle -= PI * 2.0;
+            }
         }
         
-        // Actualizar rotación sobre su eje
         self.rotation_angle += self.rotation_speed * delta_time;
         
-        if self.rotation_angle > std::f32::consts::PI * 2.0 {
-            self.rotation_angle -= std::f32::consts::PI * 2.0;
+        if self.rotation_angle > PI * 2.0 {
+            self.rotation_angle -= PI * 2.0;
         }
     }
     
-    /// Obtener posición actual del planeta en el espacio
     pub fn get_position(&self) -> Vector3 {
+        // Si orbit_radius es 0 → Sol en el centro
+        if self.orbit_radius == 0.0 {
+            return Vector3::new(0.0, 0.0, 0.0);
+        }
+        
         Vector3::new(
             self.orbit_radius * self.orbit_angle.cos(),
-            0.0, // Plano eclíptico (Y = 0)
+            0.0,
             self.orbit_radius * self.orbit_angle.sin(),
         )
     }
     
-    /// Obtener vector de rotación actual
     pub fn get_rotation(&self) -> Vector3 {
         Vector3::new(
-            self.axis_tilt,        // Inclinación del eje
-            self.rotation_angle,   // Rotación principal
+            self.axis_tilt,
+            self.rotation_angle,
             0.0,
         )
     }
 }
 
-
-// ============================================
-// NUEVA ESTRUCTURA: Nave con física propia
-// ============================================
 pub struct Spaceship {
-    // Posición absoluta en el mundo
     pub position: Vector3,
-    
-    // Orientación (yaw, pitch, roll)
-    pub yaw: f32,      // Rotación izquierda/derecha
-    pub pitch: f32,    // Rotación arriba/abajo
-    pub roll: f32,     // Inclinación lateral
-    
-    // Velocidad
+    pub yaw: f32,
+    pub pitch: f32,
+    pub roll: f32,
     pub velocity: Vector3,
-    pub speed: f32,           // Velocidad de movimiento
-    pub rotation_speed: f32,  // Velocidad de rotación
-    
-    // Visual
+    pub speed: f32,
+    pub rotation_speed: f32,
     pub scale: f32,
-    
-    // Offset de cámara (cuánto atrás y arriba está la cámara)
     pub camera_offset: Vector3,
 }
 
@@ -137,83 +112,51 @@ impl Spaceship {
     }
     
     pub fn process_input(&mut self, window: &RaylibHandle) {
-        // // ============================================
-        // // ROTACIÓN CON A/D (YAW - izquierda/derecha)
-        // // ============================================
-        // if window.is_key_down(KeyboardKey::KEY_A) {
-        //     self.yaw += self.rotation_speed; // Rotar izquierda
-        // }
-        // if window.is_key_down(KeyboardKey::KEY_D) {
-        //     self.yaw -= self.rotation_speed; // Rotar derecha
-        // }
-        
-        // ============================================
-        // ROTACIÓN CON Q/E (PITCH - arriba/abajo)
-        // ============================================
         if window.is_key_down(KeyboardKey::KEY_Q) {
-            self.pitch += self.rotation_speed; // Mirar arriba
+            self.pitch += self.rotation_speed;
         }
         if window.is_key_down(KeyboardKey::KEY_E) {
-            self.pitch -= self.rotation_speed; // Mirar abajo
+            self.pitch -= self.rotation_speed;
         }
         
-        // 🛡️ PROTECCIÓN: Limitar pitch
         self.pitch = self.pitch.clamp(-PI / 2.5, PI / 2.5);
         
-        // 🛡️ PROTECCIÓN: Normalizar ángulos para evitar overflow
         while self.yaw > PI * 2.0 { self.yaw -= PI * 2.0; }
         while self.yaw < 0.0 { self.yaw += PI * 2.0; }
         while self.roll > PI * 2.0 { self.roll -= PI * 2.0; }
         while self.roll < -PI * 2.0 { self.roll += PI * 2.0; }
         
-        // Calcular vectores de dirección
         let forward = self.get_forward_safe();
         let right = self.get_right_safe();
         
-        // ============================================
-        // MOVIMIENTO CON W/S (Adelante/Atrás en dirección de la nave)
-        // ============================================
         if window.is_key_down(KeyboardKey::KEY_S) {
-            // Adelante (en la dirección que mira)
             self.position.x += forward.x * self.speed;
             self.position.y += forward.y * self.speed;
             self.position.z += forward.z * self.speed;
         }
         if window.is_key_down(KeyboardKey::KEY_W) {
-            // Atrás (opuesto a la dirección que mira)
             self.position.x -= forward.x * self.speed;
             self.position.y -= forward.y * self.speed;
             self.position.z -= forward.z * self.speed;
         }
         
-        // ============================================
-        // MOVIMIENTO CON FLECHAS
-        // ============================================
-        
-        // ↑ : Subir (eje Y mundial)
         if window.is_key_down(KeyboardKey::KEY_UP) {
             self.position.y += self.speed;
         }
-        
-        // ↓ : Bajar (eje Y mundial)
         if window.is_key_down(KeyboardKey::KEY_DOWN) {
             self.position.y -= self.speed;
         }
         
-        // ← : Moverse izquierda (strafe)
         if window.is_key_down(KeyboardKey::KEY_A) {
             self.position.x -= right.x * self.speed;
             self.position.z -= right.z * self.speed;
         }
-        
-        // → : Moverse derecha (strafe)
         if window.is_key_down(KeyboardKey::KEY_D) {
             self.position.x += right.x * self.speed;
             self.position.z += right.z * self.speed;
         }
     }
     
-    // 🛡️ Funciones seguras con protección contra NaN/Inf
     fn get_forward_safe(&self) -> Vector3 {
         let forward = Vector3::new(
             self.pitch.cos() * self.yaw.cos(),
@@ -221,10 +164,9 @@ impl Spaceship {
             self.pitch.cos() * self.yaw.sin(),
         );
         
-        // Verificar si es válido
         if forward.x.is_nan() || forward.y.is_nan() || forward.z.is_nan() {
             eprintln!("⚠️ WARNING: forward es NaN!");
-            return Vector3::new(0.0, 0.0, -1.0); // Default forward
+            return Vector3::new(0.0, 0.0, -1.0);
         }
         
         self.safe_normalize(forward)
@@ -249,7 +191,6 @@ impl Spaceship {
         let forward = self.get_forward_safe();
         let right = self.get_right_safe();
         
-        // Cross product: right × forward
         let up = Vector3::new(
             right.y * forward.z - right.z * forward.y,
             right.z * forward.x - right.x * forward.z,
@@ -264,11 +205,9 @@ impl Spaceship {
         self.safe_normalize(up)
     }
     
-    // 🛡️ Normalización segura
     fn safe_normalize(&self, v: Vector3) -> Vector3 {
         let length_sq = v.x * v.x + v.y * v.y + v.z * v.z;
         
-        // Evitar división por cero
         if length_sq < 0.000001 {
             eprintln!("⚠️ WARNING: Vector casi cero, no se puede normalizar!");
             return Vector3::new(0.0, 0.0, 1.0);
@@ -290,7 +229,6 @@ impl Spaceship {
         let forward = self.get_forward_safe();
         let up = self.get_up_safe();
         
-        // Cámara detrás y arriba de la nave
         Vector3::new(
             self.position.x - forward.x * self.camera_offset.z + up.x * self.camera_offset.y,
             self.position.y - forward.y * self.camera_offset.z + up.y * self.camera_offset.y,
@@ -301,7 +239,6 @@ impl Spaceship {
     pub fn get_camera_target(&self) -> Vector3 {
         let forward = self.get_forward_safe();
         
-        // Target adelante de la nave
         Vector3::new(
             self.position.x + forward.x * 2.0,
             self.position.y + forward.y * 2.0,
@@ -310,34 +247,25 @@ impl Spaceship {
     }
 }
 
-
-
-// ============================================
-// Sistema Solar Completo
-// ============================================
 pub struct SolarSystem {
     pub planets: Vec<Planet>,
-    pub sun_scale: f32,
-    pub time_scale: f32,  // Multiplicador de velocidad del tiempo+
     pub spaceship: Spaceship,
+    pub time_scale: f32,
 }
 
 impl SolarSystem {
     pub fn new() -> Self {
         SolarSystem {
             planets: Vec::new(),
-            sun_scale: 2.0,
-            time_scale: 1.0,
             spaceship: Spaceship::new(),
+            time_scale: 1.0,
         }
     }
     
-    /// Agregar un planeta al sistema
     pub fn add_planet(&mut self, planet: Planet) {
         self.planets.push(planet);
     }
     
-    /// Actualizar todos los planetas
     pub fn update(&mut self, delta_time: f32) {
         let scaled_time = delta_time * self.time_scale;
         for planet in &mut self.planets {
@@ -345,33 +273,66 @@ impl SolarSystem {
         }
     }
     
-    /// Obtener el planeta más cercano a una posición
-    pub fn get_closest_planet(&self, position: Vector3) -> Option<usize> {
-        if self.planets.is_empty() {
-            return None;
-        }
+    // ============================================
+    // 🆕 SISTEMA DE COLISIONES
+    // ============================================
+    
+    /// Verifica y resuelve colisiones entre la nave y todos los planetas
+    /// Retorna true si hubo colisión y la resolvió
+    pub fn resolve_collision(&mut self) -> bool {
+        let ship_radius = self.spaceship.scale * 1.5; // Radio de colisión de la nave (un poco más grande)
+        let mut had_collision = false;
         
-        let mut closest_idx = 0;
-        let mut min_distance = f32::MAX;
-        
-        for (i, planet) in self.planets.iter().enumerate() {
+        // Verificar colisión con cada planeta
+        for planet in &self.planets {
             let planet_pos = planet.get_position();
-            let dx = planet_pos.x - position.x;
-            let dz = planet_pos.z - position.z;
-            let distance = (dx * dx + dz * dz).sqrt();
+            let ship_pos = self.spaceship.position;
             
-            if distance < min_distance {
-                min_distance = distance;
-                closest_idx = i;
+            // Calcular distancia entre centros
+            let dx = ship_pos.x - planet_pos.x;
+            let dy = ship_pos.y - planet_pos.y;
+            let dz = ship_pos.z - planet_pos.z;
+            let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+            
+            // Radio de colisión = radio del planeta + radio de la nave + margen de seguridad
+            let planet_radius = planet.scale * 1.2; // Usar escala del planeta como radio
+            let collision_distance = planet_radius + ship_radius + 0.5; // +0.5 = margen de seguridad
+            
+            // ¿Hay colisión?
+            if distance < collision_distance {
+                had_collision = true;
+                
+                // 🔍 DEBUG
+                println!("⚠️ COLISIÓN detectada con {}!", planet.name);
+                println!("   Distancia: {:.2} | Min segura: {:.2}", distance, collision_distance);
+                
+                // Calcular vector de separación (desde planeta hacia nave)
+                let separation = if distance > 0.001 {
+                    Vector3::new(dx / distance, dy / distance, dz / distance)
+                } else {
+                    // Si están exactamente en el mismo punto, empujar en dirección aleatoria
+                    Vector3::new(1.0, 0.0, 0.0)
+                };
+                
+                // Calcular cuánto se está penetrando
+                let penetration = collision_distance - distance;
+                
+                // 🛡️ RESOLVER COLISIÓN: Empujar la nave hacia afuera
+                // Multiplicamos por 1.1 para asegurar que salga completamente
+                let push_distance = penetration * 1.1;
+                
+                self.spaceship.position.x += separation.x * push_distance;
+                self.spaceship.position.y += separation.y * push_distance;
+                self.spaceship.position.z += separation.z * push_distance;
+                
+                println!("   Nave empujada {:.2} unidades hacia afuera", push_distance);
             }
         }
         
-        Some(closest_idx)
+        had_collision
     }
-
-
-
-/// 🆕 Obtener distancia al planeta más cercano
+    
+    /// Verifica si la nave está cerca de algún planeta (sin resolver colisión)
     pub fn get_distance_to_closest_planet(&self, position: Vector3) -> Option<(usize, f32, String)> {
         if self.planets.is_empty() {
             return None;
@@ -397,7 +358,7 @@ impl SolarSystem {
         Some((closest_idx, min_distance, planet_name))
     }
     
-    /// 🆕 Verificar si hay colisión con algún planeta
+    /// Verifica colisión simple (sin resolver)
     pub fn check_collision_with_planet(&self, position: Vector3, collision_radius: f32) -> Option<String> {
         for planet in &self.planets {
             let planet_pos = planet.get_position();
@@ -406,7 +367,6 @@ impl SolarSystem {
             let dz = planet_pos.z - position.z;
             let distance = (dx * dx + dy * dy + dz * dz).sqrt();
             
-            // Radio de colisión = escala del planeta + radio de seguridad
             let planet_collision_radius = planet.scale + collision_radius;
             
             if distance < planet_collision_radius {
@@ -419,129 +379,88 @@ impl SolarSystem {
 }
 
 // ============================================
-// Factory: Crear sistema solar predefinido
+// Factory
 // ============================================
 
 use crate::shaders::vertex_shader;
 use crate::shader_rocoso::fragment_shader_crater_hybrid;
 use crate::shader_gaseoso::fragment_shader_gaseoso;
 use crate::shader_strawberry::fragment_shader_strawberry;
-use crate::shader_anillo::{fragment_shader_personalizado, fragment_shader_torus, generate_torus_vertices};
+use crate::shader_anillo::fragment_shader_personalizado;
 use crate::shader_rojo::fragment_shader_red_planet;
 use crate::shader_sol::{vertex_shader_star, fragment_shader_star_flares};
-
 
 pub fn create_default_solar_system() -> SolarSystem {
     let mut system = SolarSystem::new();
     
-    // ============================================
-    // SOL (se renderiza aparte, en el centro)
-    // ============================================
-    // No se agrega como planeta, está fijo en (0, 0, 0)
+    // SOL (centro fijo)
+    system.add_planet(Planet::new(
+        "Sol",
+        0.0,
+        0.0,
+        0.1,
+        2.0,
+        vertex_shader_star,
+        fragment_shader_star_flares,
+    ));
     
-    // ============================================
-    // PLANETA 1: Mercurio (Rocoso pequeño)
-    // ============================================
+    // Planetas
     system.add_planet(Planet::new(
         "Mercurio",
-        3.0,          // Cerca del sol
-        0.1,          // Rápido
-        0.3,          // Rotación lenta
-        0.4,          // Pequeño
+        3.0,
+        0.6,
+        0.3,
+        0.4,
         vertex_shader,
         fragment_shader_crater_hybrid,
     ));
     
-    // ============================================
-    // PLANETA 2: Venus (Gaseoso)
-    // ============================================
     system.add_planet(Planet::new(
         "Venus",
-        5.0,          // Más lejos
-        0.1,          // Velocidad media
-        0.3,          // Rotación media
-        0.8,          // Mediano
+        5.0,
+        0.5,
+        0.3,
+        0.8,
         vertex_shader,
         fragment_shader_gaseoso,
     ));
     
-    // ============================================
-    // PLANETA 3: Tierra (Fresita - creativo!)
-    // ============================================
     system.add_planet(Planet::new(
         "Tierra",
-        7.5,          // Tercera órbita
-        0.1,          // Velocidad moderada
-        0.3,          // Rotación rápida
-        1.0,          // Tamaño normal
+        7.5,
+        0.4,
+        0.3,
+        1.0,
         vertex_shader,
         fragment_shader_strawberry,
     ));
     
-    // ============================================
-    // PLANETA 4: Marte (Rojo)
-    // ============================================
     system.add_planet(Planet::new(
         "Marte",
-        10.0,         // Cuarta órbita
-        0.1,          // Más lento
-        0.3,          // Rotación similar a Tierra
-        0.6,          // Pequeño
+        10.0,
+        0.6,
+        0.3,
+        0.6,
         vertex_shader,
         fragment_shader_red_planet,
     ));
     
-    // ============================================
-    // PLANETA 5: Júpiter (Grande con anillos)
-    // ============================================
     system.add_planet(Planet::new(
         "Júpiter",
-        15.0,         // Quinta órbita
-        0.1,          // Lento
-        0.3,          // Rotación muy rápida
-        1.8,          // Grande
+        15.0,
+        0.2,
+        0.3,
+        1.8,
         vertex_shader,
-        fragment_shader_personalizado, // Base para anillos
+        fragment_shader_personalizado,
     ));
     
-    
     system
 }
 
-// ============================================
-// Sistema Solar Personalizable
-// ============================================
-
-pub fn create_custom_solar_system(
-    planet_configs: Vec<(
-        &str,           // Nombre
-        f32,            // Radio orbital
-        f32,            // Velocidad orbital
-        f32,            // Velocidad rotación
-        f32,            // Escala
-        fn(&Vertex, &Uniforms) -> Vertex,
-        fn(&Fragment, &Uniforms) -> FragmentOutput,
-    )>
-) -> SolarSystem {
-    let mut system = SolarSystem::new();
-    
-    for config in planet_configs {
-        system.add_planet(Planet::new(
-            config.0, config.1, config.2, config.3, config.4, config.5, config.6
-        ));
-    }
-    
-    system
-}
-
-// ============================================
-// Helpers para órbitas
-// ============================================
-
-/// Dibujar órbita de un planeta (para debug/visualización)
 pub fn get_orbit_points(radius: f32, segments: i32) -> Vec<Vector3> {
     let mut points = Vec::new();
-    let angle_step = (std::f32::consts::PI * 2.0) / segments as f32;
+    let angle_step = (PI * 2.0) / segments as f32;
     
     for i in 0..=segments {
         let angle = i as f32 * angle_step;
@@ -555,7 +474,6 @@ pub fn get_orbit_points(radius: f32, segments: i32) -> Vec<Vector3> {
     points
 }
 
-/// Calcular posición en órbita elíptica (opcional, para mayor realismo)
 pub fn get_elliptical_position(
     semi_major: f32,
     eccentricity: f32,

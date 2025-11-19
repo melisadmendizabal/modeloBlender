@@ -17,6 +17,7 @@ mod shader_rojo;
 mod shader_sol;
 mod sistema_solar;
 
+
 use matrix::{create_model_matrix, create_projection_matrix, create_viewport_matrix};
 use camera::Camera;
 use light::Light;
@@ -207,6 +208,15 @@ fn main() {
         
         // INPUT
         solar_system.spaceship.process_input(&window);
+
+        let had_collision = solar_system.resolve_collision();
+        if had_collision && frame_count % 30 == 0 {
+            println!("🛡️ Sistema de colisiones activo");
+        }
+
+        // ACTUALIZAR CÁMARA (después de resolver colisiones)
+        camera.eye = solar_system.spaceship.get_camera_position();
+        camera.target = solar_system.spaceship.get_camera_target();
         
         if window.is_key_pressed(KeyboardKey::KEY_SPACE) {
             paused = !paused;
@@ -278,93 +288,108 @@ fn main() {
             solar_system.update(delta_time);
         }
         
+       
+    
+
+
         // RENDERIZAR
-        framebuffer.clear();
-        
-        let view_matrix = camera.get_view_matrix();
-        let projection_matrix = create_projection_matrix(fov_y, aspect, near, far);
-        let viewport_matrix = create_viewport_matrix(0.0, 0.0, window_width as f32, window_height as f32);
-        
-        uniforms.view_matrix = view_matrix;
-        uniforms.projection_matrix = projection_matrix;
-        uniforms.viewport_matrix = viewport_matrix;
-        uniforms.time = elapsed;
-        
-        // SOL
-        let sun_translation = Vector3::new(0.0, 0.0, 0.0);
-        let sun_rotation = Vector3::new(0.0, uniforms.time * 0.1, 0.0);
-        let sun_scale = solar_system.sun_scale;
-        
-        uniforms.model_matrix = create_model_matrix(sun_translation, sun_scale, sun_rotation);
-        uniforms.shader_mode = 6;
-        
+framebuffer.clear();
+
+let view_matrix = camera.get_view_matrix();
+let projection_matrix = create_projection_matrix(fov_y, aspect, near, far);
+let viewport_matrix = create_viewport_matrix(0.0, 0.0, window_width as f32, window_height as f32);
+
+uniforms.view_matrix = view_matrix;
+uniforms.projection_matrix = projection_matrix;
+uniforms.viewport_matrix = viewport_matrix;
+uniforms.time = elapsed;
+
+// ============================================
+// ✅ RENDERIZAR TODOS LOS OBJETOS EN UN LOOP
+// Ahora el Sol es el primer planeta (index 0)
+// ============================================
+
+for (idx, planet) in solar_system.planets.iter().enumerate() {
+    let position = planet.get_position();
+    let rotation = planet.get_rotation();
+    
+    uniforms.model_matrix = create_model_matrix(position, planet.scale, rotation);
+    
+    // Shader mode: Sol = 6, planetas = idx
+    uniforms.shader_mode = if planet.name == "Sol" { 
+        6 
+    } else { 
+        idx as i32 
+    };
+    
+    render(
+        &mut framebuffer,
+        &uniforms,
+        &vertex_array,
+        &light,
+        planet.vertex_shader,
+        planet.fragment_shader,
+    );
+    
+    // Anillo de Júpiter
+    if planet.name == "Júpiter" {
+        let torus_vertices = generate_torus_vertices(&uniforms);
         render(
             &mut framebuffer,
             &uniforms,
-            &vertex_array,
-            &light,
-            vertex_shader_star,
-            fragment_shader_star_flares,
-        );
-        
-        // PLANETAS
-        for (idx, planet) in solar_system.planets.iter().enumerate() {
-            let position = planet.get_position();
-            let rotation = planet.get_rotation();
-            
-            uniforms.model_matrix = create_model_matrix(position, planet.scale, rotation);
-            uniforms.shader_mode = idx as i32 + 1;
-            
-            render(
-                &mut framebuffer,
-                &uniforms,
-                &vertex_array,
-                &light,
-                planet.vertex_shader,
-                planet.fragment_shader,
-            );
-            
-            if planet.name == "Júpiter" {
-                let torus_vertices = generate_torus_vertices(&uniforms);
-                render(
-                    &mut framebuffer,
-                    &uniforms,
-                    &torus_vertices,
-                    &light,
-                    vertex_shader,
-                    fragment_shader_torus,
-                );
-            }
-        }
-        
-        // NAVE
-        let ship_position = solar_system.spaceship.get_world_position();
-        let ship_rotation = solar_system.spaceship.get_world_rotation();
-        
-        uniforms.model_matrix = create_model_matrix(
-            ship_position,
-            solar_system.spaceship.scale,
-            ship_rotation
-        );
-        uniforms.shader_mode = 99;
-        
-        render(
-            &mut framebuffer,
-            &uniforms,
-            &ship_vertices,
+            &torus_vertices,
             &light,
             vertex_shader,
-            fragment_shader_papel,
+            fragment_shader_torus,
         );
-        
-        framebuffer.swap_buffers(&mut window, &raylib_thread);
+    }
+}
+
+// ============================================
+// NAVE (siempre al final)
+// ============================================
+let ship_position = solar_system.spaceship.get_world_position();
+let ship_rotation = solar_system.spaceship.get_world_rotation();
+
+uniforms.model_matrix = create_model_matrix(
+    ship_position,
+    solar_system.spaceship.scale,
+    ship_rotation
+);
+uniforms.shader_mode = 99;
+
+render(
+    &mut framebuffer,
+    &uniforms,
+    &ship_vertices,
+    &light,
+    vertex_shader,
+    fragment_shader_papel,
+);
+
+framebuffer.swap_buffers(&mut window, &raylib_thread);
+
+
+
+
         
         let mut d = window.begin_drawing(&raylib_thread);
         
         let ui_x = 20;
         let ui_y = 20;
         let line_h = 22;
-        
+
+                // En main.rs, después del loop de renderizado
+        if frame_count % 120 == 0 {
+            println!("🌍 Posiciones:");
+            for planet in &solar_system.planets {
+                let pos = planet.get_position();
+                println!("   {} → ({:.1}, {:.1}, {:.1})", 
+                    planet.name, pos.x, pos.y, pos.z);
+            }
+        }
+            
+                
         d.draw_text("=== DEBUG MODE ===", ui_x, ui_y, 20, Color::RED);
         
         d.draw_text(

@@ -1,3 +1,4 @@
+// shader_sol.rs
 // ============================================
 // SHADER DE ESTRELLA / SOL ⭐☀️
 // Implementa múltiples tipos de ruido y efectos solares
@@ -168,10 +169,14 @@ pub fn vertex_shader_star(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     position.y *= scale;
     position.z *= scale;
     
-    // Aplicar transformaciones estándar
+    // ✅ Aplicar transformaciones estándar CON view_depth
     let position_vec4 = Vector4::new(position.x, position.y, position.z, 1.0);
     let world_position = multiply_matrix_vector4(&uniforms.model_matrix, &position_vec4);
     let view_position = multiply_matrix_vector4(&uniforms.view_matrix, &world_position);
+    
+    // ✅ CRÍTICO: Calcular view depth
+    let view_depth = -view_position.z;
+    
     let clip_position = multiply_matrix_vector4(&uniforms.projection_matrix, &view_position);
     let clip_w = clip_position.w;
     
@@ -208,6 +213,7 @@ pub fn vertex_shader_star(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
         transformed_position,
         transformed_normal: normal,
         w: clip_w,
+        view_depth,  // ✅ Agregar view_depth
     }
 }
 
@@ -345,17 +351,15 @@ pub fn fragment_shader_star(fragment: &Fragment, uniforms: &Uniforms) -> Fragmen
     }
 }
 
-
-
-
-
 /// Estrella con llamaradas extremas
 pub fn fragment_shader_star_flares(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     let mut result = fragment_shader_star(fragment, uniforms);
     
+    // Ajustar colores para más dramatismo
     result.color.x *= 0.8;
     result.color.y *= 0.9;
     result.color.z *= 1.3;
+    
     // Intensificar emisión
     result.color = result.color * 1.5;
     

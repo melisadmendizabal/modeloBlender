@@ -1,4 +1,4 @@
-// framebuffer.rs
+// framebuffer.rs - VERSIÓN CORREGIDA
 use raylib::prelude::*;
 
 pub struct Framebuffer {
@@ -8,15 +8,18 @@ pub struct Framebuffer {
     pub background_color: Vector3,
     pub texture: Option<Texture2D>,
     pub depth_buffer: Vec<f32>,
-    pub buffer: Vec<Vector3>, // 👈 Buffer intermedio para mezclas
+    pub buffer: Vec<Vector3>,
 }
 
 impl Framebuffer {
     pub fn new(width: u32, height: u32) -> Self {
         let image = Image::gen_image_color(width as i32, height as i32, Color::WHITE);
         let buffer_size = (width * height) as usize;
+
+        // ✅ CORRECCIÓN: Usar f32::INFINITY (infinito positivo)
+        // Esto significa "todos los pixels empiezan infinitamente lejos"
         let depth_buffer = vec![f32::INFINITY; buffer_size];
-        let buffer = vec![Vector3::zero(); buffer_size]; // 👈 Nuevo buffer
+        let buffer = vec![Vector3::zero(); buffer_size];
         
         Framebuffer {
             width,
@@ -42,9 +45,10 @@ impl Framebuffer {
         );
 
         self.image.clear_background(bg_color);
+        
+        // ✅ CORRECCIÓN: Resetear a INFINITY (lejos = infinito)
         self.depth_buffer.fill(f32::INFINITY);
         
-        // 👈 Limpiar el buffer intermedio con el color de fondo
         for pixel in &mut self.buffer {
             *pixel = self.background_color;
         }
@@ -54,21 +58,21 @@ impl Framebuffer {
         if x >= 0 && y >= 0 && x < self.width as i32 && y < self.height as i32 {
             let index = (y * self.width as i32 + x) as usize;
 
-            // 👈 DEPTH TEST: Solo dibuja si está más cerca
+            // ✅ CORRECCIÓN: DEPTH TEST CORRECTO
+            // Solo dibuja si el nuevo fragmento está MÁS CERCA (depth menor)
             if depth < self.depth_buffer[index] {
-                self.depth_buffer[index] = depth;
+                // Solo actualizar depth buffer si el objeto es opaco
+                if alpha >= 0.99 {
+                    self.depth_buffer[index] = depth;
+                }
 
-                // 👈 Alpha blending con el buffer intermedio (más rápido)
                 let old_color = self.buffer[index];
                 let blended = if alpha >= 0.99 {
-                    // Opaco: reemplazar directamente
                     color
                 } else {
-                    // Transparente: mezclar
                     old_color * (1.0 - alpha) + color * alpha
                 };
 
-                // Guardar en buffer intermedio
                 self.buffer[index] = blended;
 
                 return true;
@@ -82,7 +86,6 @@ impl Framebuffer {
     }
 
     pub fn swap_buffers(&mut self, rl: &mut RaylibHandle, thread: &RaylibThread) {
-        // 👈 Transferir el buffer intermedio a la imagen (una sola vez)
         for y in 0..self.height {
             for x in 0..self.width {
                 let index = (y * self.width + x) as usize;

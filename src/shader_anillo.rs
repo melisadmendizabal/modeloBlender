@@ -53,6 +53,7 @@ pub fn vertex_shader_torus(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     // Transformaciones
     let world_position = multiply_matrix_vector4(&uniforms.model_matrix, &position_vec4);
     let view_position = multiply_matrix_vector4(&uniforms.view_matrix, &world_position);
+    let view_depth = -view_position.z;
     let clip_position = multiply_matrix_vector4(&uniforms.projection_matrix, &view_position);
     let clip_w = clip_position.w;
 
@@ -91,6 +92,7 @@ pub fn vertex_shader_torus(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
         transformed_position,
         transformed_normal: normal,
         w: clip_w,
+        view_depth,
     }
 }
 
@@ -116,6 +118,7 @@ pub fn generate_torus_vertices(uniforms: &Uniforms) -> Vec<Vertex> {
                 transformed_position: Vector3::new(0.0, 0.0, 0.0),
                 transformed_normal: Vector3::new(0.0, 0.0, 0.0),
                 w: 1.0,
+                view_depth: 0.0,
             };
 
             vertex_array.push(vertex_shader_torus(&vertex, uniforms));

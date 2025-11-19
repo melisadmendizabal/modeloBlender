@@ -1,4 +1,3 @@
-//vertex.rs
 #![allow(dead_code)]
 
 use raylib::math::{Vector2, Vector3};
@@ -12,6 +11,9 @@ pub struct Vertex {
   pub transformed_position: Vector3,
   pub transformed_normal: Vector3,
   pub w: f32,
+  
+  // ✅ NUEVO: Profundidad en view space (distancia real desde la cámara)
+  pub view_depth: f32,
 }
 
 impl Vertex {
@@ -20,10 +22,11 @@ impl Vertex {
       position,
       normal,
       tex_coords,
-      color: Vector3::new(1.0, 1.0, 1.0), // Black
+      color: Vector3::new(1.0, 1.0, 1.0),
       transformed_position: position,
       transformed_normal: normal,
       w: 1.0,
+      view_depth: 0.0,  // ✅ Inicializar
     }
   }
 
@@ -36,6 +39,7 @@ impl Vertex {
       transformed_position: Vector3::new(0.0, 0.0, 0.0),
       transformed_normal: Vector3::new(0.0, 0.0, 0.0),
       w: 1.0,
+      view_depth: 0.0,  // ✅ Inicializar
     }
   }
 
@@ -51,10 +55,11 @@ impl Default for Vertex {
       position: Vector3::new(0.0, 0.0, 0.0),
       normal: Vector3::new(0.0, 1.0, 0.0),
       tex_coords: Vector2::new(0.0, 0.0),
-      color: Vector3::new(1.0, 1.0, 1.0), // Black
+      color: Vector3::new(1.0, 1.0, 1.0),
       transformed_position: Vector3::new(0.0, 0.0, 0.0),
       transformed_normal: Vector3::new(0.0, 1.0, 0.0),
       w: 1.0,
+      view_depth: 0.0,  // ✅ Inicializar
     }
   }
 }
