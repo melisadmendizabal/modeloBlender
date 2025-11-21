@@ -170,7 +170,7 @@ pub fn combine_strawberry_layers(
 }
 
 
-// SHADER PRINCIPAL: Fresita completa 🍓
+// SHADER PRINCIPAL: Fresita completa 
 pub fn fragment_shader_strawberry(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     combine_strawberry_layers(fragment, uniforms)
 }

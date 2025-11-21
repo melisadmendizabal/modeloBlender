@@ -14,7 +14,7 @@ use crate::shader_sol::fragment_shader_star_flares;
 pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     let mut position = vertex.position;
 
-    // 🌕 Si es Saturno (modo 2), deformar para anillos
+    // Si es Saturno (modo 2), deformar para anillos
     if uniforms.shader_mode == 2 {
         let radius = (position.x * position.x + position.z * position.z).sqrt();
         if radius > 0.4 && radius < 0.8 {
@@ -74,7 +74,7 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
         transformed_position,
         transformed_normal: transform_normal(&vertex.normal, &uniforms.model_matrix),
         w: clip_w,
-        view_depth,  // ✅ Agregar view_depth
+        view_depth, 
     }
 }
 

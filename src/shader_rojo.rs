@@ -2,9 +2,8 @@ use raylib::prelude::*;
 use crate::fragment::{Fragment, FragmentOutput};
 use crate::Uniforms;
 
-// ============================================
+
 // CAPA 1: Terreno base de Marte con variación geológica
-// ============================================
 pub fn red_planet_terrain_layer(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     // Paleta de rojos marcianos
     let rust_red = Vector3::new(0.8, 0.3, 0.2);      // Rojo óxido
@@ -59,9 +58,8 @@ pub fn red_planet_terrain_layer(fragment: &Fragment, uniforms: &Uniforms) -> Fra
     }
 }
 
-// ============================================
+
 // CAPA 2: Tormentas de arena dinámicas
-// ============================================
 pub fn red_planet_dust_storms_layer(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     let dust_color = Vector3::new(0.9, 0.5, 0.35);  // Arena rojiza
     let storm_color = Vector3::new(0.7, 0.35, 0.25); // Tormenta oscura
@@ -102,9 +100,7 @@ pub fn red_planet_dust_storms_layer(fragment: &Fragment, uniforms: &Uniforms) ->
     }
 }
 
-// ============================================
 // CAPA 3: Casquetes polares de hielo (CO2 y agua)
-// ============================================
 pub fn red_planet_ice_caps_layer(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     let ice_white = Vector3::new(0.95, 0.95, 0.98);  // Blanco azulado
     let ice_blue = Vector3::new(0.85, 0.90, 0.95);   // Azul claro
@@ -161,9 +157,8 @@ pub fn red_planet_ice_caps_layer(fragment: &Fragment, uniforms: &Uniforms) -> Fr
     }
 }
 
-// ============================================
+
 // CAPA 4: Venas de minerales brillantes (opcional)
-// ============================================
 pub fn red_planet_minerals_layer(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     let mineral_gold = Vector3::new(1.0, 0.8, 0.3);   // Dorado
     let mineral_cyan = Vector3::new(0.3, 0.8, 0.9);   // Cian (cobre oxidado)
@@ -219,9 +214,8 @@ pub fn red_planet_minerals_layer(fragment: &Fragment, uniforms: &Uniforms) -> Fr
     }
 }
 
-// ============================================
+
 // CAPA 5: Brillo atmosférico (resplandor en los bordes)
-// ============================================
 pub fn red_planet_atmosphere_glow(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     let glow_color = Vector3::new(1.0, 0.6, 0.4); // Resplandor anaranjado
     
@@ -248,9 +242,7 @@ pub fn red_planet_atmosphere_glow(fragment: &Fragment, uniforms: &Uniforms) -> F
     }
 }
 
-// ============================================
 // COMBINADOR: Mezcla todas las capas
-// ============================================
 pub fn combine_red_planet_layers(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     // Obtener todas las capas
     let terrain = red_planet_terrain_layer(fragment, uniforms);
@@ -280,16 +272,13 @@ pub fn combine_red_planet_layers(fragment: &Fragment, uniforms: &Uniforms) -> Fr
     }
 }
 
-// ============================================
-// SHADER PRINCIPAL: Planeta Rojo Completo 🔴
-// ============================================
+
+// SHADER PRINCIPAL: Planeta Rojo Completo 
 pub fn fragment_shader_red_planet(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     combine_red_planet_layers(fragment, uniforms)
 }
 
-// ============================================
-// VARIANTES OPCIONALES
-// ============================================
+
 
 // Solo terreno (sin efectos)
 pub fn fragment_shader_red_planet_simple(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {

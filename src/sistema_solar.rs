@@ -1,4 +1,4 @@
-// sistema_solar.rs - CON SISTEMA DE COLISIONES
+// sistema_solar.rs 
 
 use raylib::prelude::*;
 use crate::vertex::Vertex;
@@ -140,18 +140,18 @@ impl Spaceship {
             self.position.z -= forward.z * self.speed;
         }
         
-        if window.is_key_down(KeyboardKey::KEY_UP) {
+        if window.is_key_down(KeyboardKey::KEY_DOWN) {
             self.position.y += self.speed;
         }
-        if window.is_key_down(KeyboardKey::KEY_DOWN) {
+        if window.is_key_down(KeyboardKey::KEY_UP) {
             self.position.y -= self.speed;
         }
         
-        if window.is_key_down(KeyboardKey::KEY_A) {
+        if window.is_key_down(KeyboardKey::KEY_D) {
             self.position.x -= right.x * self.speed;
             self.position.z -= right.z * self.speed;
         }
-        if window.is_key_down(KeyboardKey::KEY_D) {
+        if window.is_key_down(KeyboardKey::KEY_A) {
             self.position.x += right.x * self.speed;
             self.position.z += right.z * self.speed;
         }
@@ -273,9 +273,9 @@ impl SolarSystem {
         }
     }
     
-    // ============================================
-    // 🆕 SISTEMA DE COLISIONES
-    // ============================================
+
+    // SISTEMA DE COLISIONES
+  
     
     /// Verifica y resuelve colisiones entre la nave y todos los planetas
     /// Retorna true si hubo colisión y la resolvió
@@ -378,10 +378,8 @@ impl SolarSystem {
     }
 }
 
-// ============================================
-// Factory
-// ============================================
 
+// Factory
 use crate::shaders::vertex_shader;
 use crate::shader_rocoso::fragment_shader_crater_hybrid;
 use crate::shader_gaseoso::fragment_shader_gaseoso;
@@ -400,7 +398,7 @@ pub fn create_default_solar_system() -> SolarSystem {
         0.0,
         0.1,
         2.0,
-        vertex_shader_star,
+        vertex_shader,
         fragment_shader_star_flares,
     ));
     

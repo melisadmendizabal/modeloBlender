@@ -16,7 +16,7 @@ impl Framebuffer {
         let image = Image::gen_image_color(width as i32, height as i32, Color::WHITE);
         let buffer_size = (width * height) as usize;
 
-        // ✅ CORRECCIÓN: Usar f32::INFINITY (infinito positivo)
+      
         // Esto significa "todos los pixels empiezan infinitamente lejos"
         let depth_buffer = vec![f32::INFINITY; buffer_size];
         let buffer = vec![Vector3::zero(); buffer_size];
@@ -46,7 +46,7 @@ impl Framebuffer {
 
         self.image.clear_background(bg_color);
         
-        // ✅ CORRECCIÓN: Resetear a INFINITY (lejos = infinito)
+        //  Resetear a INFINITY (lejos = infinito)
         self.depth_buffer.fill(f32::INFINITY);
         
         for pixel in &mut self.buffer {
@@ -58,7 +58,7 @@ impl Framebuffer {
         if x >= 0 && y >= 0 && x < self.width as i32 && y < self.height as i32 {
             let index = (y * self.width as i32 + x) as usize;
 
-            // ✅ CORRECCIÓN: DEPTH TEST CORRECTO
+  
             // Solo dibuja si el nuevo fragmento está MÁS CERCA (depth menor)
             if depth < self.depth_buffer[index] {
                 // Solo actualizar depth buffer si el objeto es opaco

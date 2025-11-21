@@ -1,8 +1,6 @@
 // shader_sol.rs
-// ============================================
-// SHADER DE ESTRELLA / SOL ⭐☀️
+// SHADER DE ESTRELLA / SOL 
 // Implementa múltiples tipos de ruido y efectos solares
-// ============================================
 
 use raylib::prelude::*;
 use crate::fragment::{Fragment, FragmentOutput};
@@ -10,9 +8,9 @@ use crate::vertex::Vertex;
 use crate::Uniforms;
 use crate::matrix::multiply_matrix_vector4;
 
-// ============================================
+
 // FUNCIONES DE RUIDO
-// ============================================
+
 
 /// Función hash para generar valores pseudo-aleatorios
 /// Usada como base para los ruidos
@@ -136,9 +134,9 @@ fn fbm_perlin(p: Vector2, octaves: i32) -> f32 {
     value
 }
 
-// ============================================
+
 // VERTEX SHADER: Distorsión de superficie
-// ============================================
+
 
 /// Vertex shader que distorsiona la superficie de la estrella
 /// Simula turbulencias y llamaradas solares
@@ -169,12 +167,12 @@ pub fn vertex_shader_star(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     position.y *= scale;
     position.z *= scale;
     
-    // ✅ Aplicar transformaciones estándar CON view_depth
+
     let position_vec4 = Vector4::new(position.x, position.y, position.z, 1.0);
     let world_position = multiply_matrix_vector4(&uniforms.model_matrix, &position_vec4);
     let view_position = multiply_matrix_vector4(&uniforms.view_matrix, &world_position);
     
-    // ✅ CRÍTICO: Calcular view depth
+  
     let view_depth = -view_position.z;
     
     let clip_position = multiply_matrix_vector4(&uniforms.projection_matrix, &view_position);
@@ -213,13 +211,13 @@ pub fn vertex_shader_star(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
         transformed_position,
         transformed_normal: normal,
         w: clip_w,
-        view_depth,  // ✅ Agregar view_depth
+        view_depth, 
     }
 }
 
-// ============================================
+
 // GRADIENTE DE TEMPERATURA
-// ============================================
+
 
 /// Convierte temperatura (en factor 0-1) a color
 /// Simula el espectro de radiación de cuerpo negro
@@ -249,9 +247,9 @@ fn temperature_to_color(temp: f32) -> Vector3 {
     }
 }
 
-// ============================================
+
 // FRAGMENT SHADER PRINCIPAL: Superficie de la estrella
-// ============================================
+
 
 pub fn fragment_shader_star(fragment: &Fragment, uniforms: &Uniforms) -> FragmentOutput {
     
@@ -261,27 +259,21 @@ pub fn fragment_shader_star(fragment: &Fragment, uniforms: &Uniforms) -> Fragmen
     let theta = pos.z.atan2(pos.x);
     let phi = (pos.y / (pos.x * pos.x + pos.y * pos.y + pos.z * pos.z).sqrt()).asin();
     
-    // ============================================
     // CAPA 1: Temperatura base (Perlin Noise)
-    // ============================================
     let base_coord = Vector2::new(
         theta * 2.0 + uniforms.time * 0.05,
         phi * 2.0 + uniforms.time * 0.08,
     );
     let base_temp = fbm_perlin(base_coord, 5) * 0.5 + 0.5; // [0, 1]
     
-    // ============================================
     // CAPA 2: Granulación solar (Simplex Noise)
-    // ============================================
     let grain_coord = Vector2::new(
         theta * 15.0 + uniforms.time * 0.3,
         phi * 15.0 - uniforms.time * 0.2,
     );
     let granulation = simplex_noise(grain_coord) * 0.15;
     
-    // ============================================
     // CAPA 3: Manchas solares (Cellular Noise)
-    // ============================================
     let spot_coord = Vector2::new(
         theta + uniforms.time * 0.02,
         phi - uniforms.time * 0.03,
@@ -307,9 +299,9 @@ pub fn fragment_shader_star(fragment: &Fragment, uniforms: &Uniforms) -> Fragmen
     );
     let turbulence = fbm_perlin(turb_coord, 3) * 0.2;
     
-    // ============================================
+   
     // COMBINAR TODAS LAS CAPAS
-    // ============================================
+  
     let mut temperature = base_temp;
     temperature += granulation;
     temperature -= spot_factor; // Manchas son más frías
@@ -317,15 +309,13 @@ pub fn fragment_shader_star(fragment: &Fragment, uniforms: &Uniforms) -> Fragmen
     temperature += turbulence;
     temperature = temperature.clamp(0.0, 1.0);
     
-    // ============================================
+    
     // EMISIÓN VARIABLE (pulsaciones)
-    // ============================================
+
     let pulse = (uniforms.time * 2.0).sin() * 0.1 + 0.9; // [0.8, 1.0]
     let emission_boost = 1.0 + flare_intensity * 3.0; // Llamaradas emiten más
     
-    // ============================================
     // COLOR FINAL basado en temperatura
-    // ============================================
     let base_color = temperature_to_color(temperature);
     
     // Aplicar emisión
@@ -335,9 +325,7 @@ pub fn fragment_shader_star(fragment: &Fragment, uniforms: &Uniforms) -> Fragmen
     let hot_spots = (temperature - 0.7).max(0.0) * 3.0;
     let final_color = emissive_color + Vector3::new(hot_spots, hot_spots, hot_spots);
     
-    // ============================================
     // EFECTO FRESNEL (brillo en los bordes)
-    // ============================================
     let view_dir = pos.normalized();
     let normal = fragment.normal.normalized();
     let fresnel = (1.0 - view_dir.dot(normal).abs()).powf(3.0);

@@ -121,32 +121,16 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, light: &Light) -> Vec<Fra
                 
                 let light_dir_norm = light_dir.normalized();
                 let intensity = normalized_normal.dot(light_dir_norm).max(0.0);
-
-                let shaded_color = Vector3::new(
-                    base_color.x * intensity,
-                    base_color.y * intensity,
-                    base_color.z * intensity,
-                );
-
-                // ✅ CORRECCIÓN CRÍTICA: Interpolación correcta del depth
-                // El depth en transformed_position.z ya viene del viewport
-                // que mapea [-1,1] a [0,1], donde:
-                // - 0.0 = cerca (near plane)
-                // - 1.0 = lejos (far plane)
                 
                 // Interpolar el Z correctamente (sin corrección de perspectiva para depth)
                 let depth = w1 * v1.transformed_position.z
                           + w2 * v2.transformed_position.z
                           + w3 * v3.transformed_position.z;
                 
-                // ✅ VERIFICACIÓN: El depth debe estar en [0, 1]
+         
                 // Si está fuera de rango, hay un problema en el pipeline
                 let depth_clamped = depth.clamp(0.0, 1.0);
-                
-                // 🔍 DEBUG: Descomentar para ver valores sospechosos
-                // if depth < 0.0 || depth > 1.0 {
-                //     eprintln!("⚠️ Depth fuera de rango: {:.6} en ({}, {})", depth, x, y);
-                // }
+          
 
                 let edge1 = v2.position - v1.position;
                 let edge2 = v3.position - v1.position;
@@ -160,7 +144,7 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, light: &Light) -> Vec<Fra
                     p_x, 
                     p_y, 
                     Vector3::new(face_intensity, face_intensity, face_intensity), 
-                    depth_clamped,  // ✅ Usar depth clampado
+                    depth_clamped,  
                     face_normal,
                     world_pos
                 ));

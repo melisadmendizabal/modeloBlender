@@ -12,7 +12,7 @@ pub struct Vertex {
   pub transformed_normal: Vector3,
   pub w: f32,
   
-  // ✅ NUEVO: Profundidad en view space (distancia real desde la cámara)
+  //  Profundidad en view space (distancia real desde la cámara)
   pub view_depth: f32,
 }
 
@@ -26,7 +26,7 @@ impl Vertex {
       transformed_position: position,
       transformed_normal: normal,
       w: 1.0,
-      view_depth: 0.0,  // ✅ Inicializar
+      view_depth: 0.0,  
     }
   }
 
@@ -39,7 +39,7 @@ impl Vertex {
       transformed_position: Vector3::new(0.0, 0.0, 0.0),
       transformed_normal: Vector3::new(0.0, 0.0, 0.0),
       w: 1.0,
-      view_depth: 0.0,  // ✅ Inicializar
+      view_depth: 0.0,  
     }
   }
 
@@ -59,7 +59,7 @@ impl Default for Vertex {
       transformed_position: Vector3::new(0.0, 0.0, 0.0),
       transformed_normal: Vector3::new(0.0, 1.0, 0.0),
       w: 1.0,
-      view_depth: 0.0,  // ✅ Inicializar
+      view_depth: 0.0,  
     }
   }
 }

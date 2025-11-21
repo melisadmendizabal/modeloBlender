@@ -16,7 +16,8 @@ mod shader_rocoso;
 mod shader_rojo;
 mod shader_sol;
 mod sistema_solar;
-
+mod texture;  
+mod skybox; 
 
 use matrix::{create_model_matrix, create_projection_matrix, create_viewport_matrix};
 use camera::Camera;
@@ -46,6 +47,8 @@ use shader_sol::vertex_shader_star;
 use crate::fragment::Fragment;
 use crate::fragment::FragmentOutput;
 use std::time::Instant;
+use texture::Skybox as SkyboxTexture;
+use skybox::{generate_skybox_vertices, vertex_shader_skybox, fragment_shader_skybox_procedural};
 
 
 
@@ -104,13 +107,89 @@ fn render(
     }
 }
 
-// fn get_current_time_seconds() -> f32 {
-//     use std::time::SystemTime;
-//     let start = SystemTime::now()
-//         .duration_since(SystemTime::UNIX_EPOCH)
-//         .unwrap();
-//     start.as_secs_f32()
-// }
+fn render_skybox_optimized(
+    framebuffer: &mut Framebuffer,
+    uniforms: &Uniforms,
+    skybox: &SkyboxTexture,
+    camera: &Camera,
+) {
+    let width = framebuffer.width as i32;
+    let height = framebuffer.height as i32;
+    
+    // Matriz inversa para ray casting
+    let inv_proj = uniforms.projection_matrix.transposed(); // Simplificación
+    let inv_view = uniforms.view_matrix.transposed();
+    
+    // Solo dibujar en píxeles que no tienen geometría (depth = INFINITY)
+    for y in 0..height {
+        for x in 0..width {
+            let index = (y * width + x) as usize;
+            
+            // ✅ CRÍTICO: Solo dibujar donde NO hay nada (depth máximo)
+            if framebuffer.depth_buffer[index] >= 0.9999 {
+                // Calcular rayo desde la cámara
+                let ndc_x = (x as f32 / width as f32) * 2.0 - 1.0;
+                let ndc_y = 1.0 - (y as f32 / height as f32) * 2.0;
+                
+                // Dirección aproximada del rayo
+                let dir = Vector3::new(
+                    ndc_x * 1.5,
+                    ndc_y,
+                    -1.0
+                ).normalized();
+                
+                // Rotar por la cámara (aproximación simple)
+                let forward = (camera.target - camera.eye).normalized();
+                let right = forward.cross(camera.up).normalized();
+                let up = right.cross(forward);
+                
+                let world_dir = Vector3::new(
+                    right.x * dir.x + up.x * dir.y + forward.x * dir.z,
+                    right.y * dir.x + up.y * dir.y + forward.y * dir.z,
+                    right.z * dir.x + up.z * dir.y + forward.z * dir.z,
+                );
+                
+                // Samplear skybox
+                let color = skybox.sample(world_dir);
+                
+                // Dibujar directamente al buffer (sin depth check)
+                framebuffer.buffer[index] = color;
+            }
+        }
+    }
+}
+
+
+fn render_skybox_fast(
+    framebuffer: &mut Framebuffer,
+    camera: &Camera,
+) {
+    let width = framebuffer.width as i32;
+    let height = framebuffer.height as i32;
+    
+    for y in 0..height {
+        for x in 0..width {
+            let index = (y * width + x) as usize;
+            
+            // Solo píxeles vacíos
+            if framebuffer.depth_buffer[index] >= 0.9999 {
+                // Gradiente simple cielo espacial
+                let t = y as f32 / height as f32;
+                
+                let space_dark = Vector3::new(0.01, 0.01, 0.05);
+                let space_blue = Vector3::new(0.05, 0.1, 0.2);
+                
+                let color = space_dark * (1.0 - t) + space_blue * t;
+                
+                // Estrellas aleatorias
+                let hash = ((x * 73856093) ^ (y * 19349663)) as f32;
+                let star = if (hash % 10000.0) > 9980.0 { 0.8 } else { 0.0 };
+                
+                framebuffer.buffer[index] = color + Vector3::new(star, star, star);
+            }
+        }
+    }
+}
 
 fn get_current_time_seconds(start_time: &Instant) -> f32 {
     start_time.elapsed().as_secs_f32()
@@ -140,6 +219,18 @@ fn main() {
     let ship_obj = Obj::load("./Models/barcoPapel.obj").expect("Failed to load barco");
     let ship_vertices = ship_obj.get_vertex_array();
     println!("✅ Nave cargada: {} vértices", ship_vertices.len());
+
+    // Cargar skybox (con texturas O procedural)
+    let skybox_texture = SkyboxTexture::load("./Textures/skybox")
+        .ok(); // Devuelve None si falla
+        
+    let skybox_vertices = generate_skybox_vertices();
+
+    if skybox_texture.is_some() {
+        println!("✅ Skybox con texturas cargado");
+    } else {
+        println!("⚠️  Skybox procedural (sin texturas)");
+    }
     
     let mut solar_system = create_default_solar_system();
     solar_system.time_scale = 1.0;
@@ -174,7 +265,7 @@ fn main() {
     let mut frame_count = 0u64;
 
     println!("🚀 Iniciando loop principal...\n");
-    println!("💡 Tip: Presiona ESC para salir limpiamente\n");
+
 
     while !window.window_should_close() {
         let current_time = Instant::now();
@@ -196,16 +287,7 @@ fn main() {
                 solar_system.spaceship.pitch
             );
         }
-        
-        // 🔍 DEBUG: Log específico cerca del segundo 9.3
-        if elapsed > 9.0 && elapsed < 10.0 && frame_count % 10 == 0 {
-            println!("🔴 CERCA DEL SEGUNDO 9.3!");
-            println!("   Camera eye: ({:.2}, {:.2}, {:.2})", 
-                camera.eye.x, camera.eye.y, camera.eye.z);
-            println!("   Camera target: ({:.2}, {:.2}, {:.2})", 
-                camera.target.x, camera.target.y, camera.target.z);
-        }
-        
+  
         // INPUT
         solar_system.spaceship.process_input(&window);
 
@@ -218,23 +300,6 @@ fn main() {
         camera.eye = solar_system.spaceship.get_camera_position();
         camera.target = solar_system.spaceship.get_camera_target();
         
-        if window.is_key_pressed(KeyboardKey::KEY_SPACE) {
-            paused = !paused;
-            println!("⏸️  Pausado: {}", paused);
-        }
-        
-        if window.is_key_pressed(KeyboardKey::KEY_O) {
-            show_orbits = !show_orbits;
-        }
-        
-        if window.is_key_pressed(KeyboardKey::KEY_EQUAL) {
-            solar_system.time_scale *= 1.5;
-            println!("⏩ Velocidad: {:.1}x", solar_system.time_scale);
-        }
-        if window.is_key_pressed(KeyboardKey::KEY_MINUS) {
-            solar_system.time_scale /= 1.5;
-            println!("⏪ Velocidad: {:.1}x", solar_system.time_scale);
-        }
 
         // 🆕 H: Resetear posición de la nave (HOME)
         if window.is_key_pressed(KeyboardKey::KEY_H) {
@@ -293,85 +358,98 @@ fn main() {
 
 
         // RENDERIZAR
-framebuffer.clear();
+        framebuffer.clear();
 
-let view_matrix = camera.get_view_matrix();
-let projection_matrix = create_projection_matrix(fov_y, aspect, near, far);
-let viewport_matrix = create_viewport_matrix(0.0, 0.0, window_width as f32, window_height as f32);
+        let view_matrix = camera.get_view_matrix();
+        let projection_matrix = create_projection_matrix(fov_y, aspect, near, far);
+        let viewport_matrix = create_viewport_matrix(0.0, 0.0, window_width as f32, window_height as f32);
 
-uniforms.view_matrix = view_matrix;
-uniforms.projection_matrix = projection_matrix;
-uniforms.viewport_matrix = viewport_matrix;
-uniforms.time = elapsed;
+        uniforms.view_matrix = view_matrix;
+        uniforms.projection_matrix = projection_matrix;
+        uniforms.viewport_matrix = viewport_matrix;
+        uniforms.time = elapsed;
 
-// ============================================
-// ✅ RENDERIZAR TODOS LOS OBJETOS EN UN LOOP
-// Ahora el Sol es el primer planeta (index 0)
-// ============================================
+ 
+        // SKYBOX (siempre primero, al fondo)
+ 
+        uniforms.model_matrix = Matrix::identity();
 
-for (idx, planet) in solar_system.planets.iter().enumerate() {
-    let position = planet.get_position();
-    let rotation = planet.get_rotation();
-    
-    uniforms.model_matrix = create_model_matrix(position, planet.scale, rotation);
-    
-    // Shader mode: Sol = 6, planetas = idx
-    uniforms.shader_mode = if planet.name == "Sol" { 
-        6 
-    } else { 
-        idx as i32 
-    };
-    
-    render(
-        &mut framebuffer,
-        &uniforms,
-        &vertex_array,
-        &light,
-        planet.vertex_shader,
-        planet.fragment_shader,
-    );
-    
-    // Anillo de Júpiter
-    if planet.name == "Júpiter" {
-        let torus_vertices = generate_torus_vertices(&uniforms);
+
+        if let Some(ref skybox) = skybox_texture {
+            // Con texturas
+            render_skybox_optimized(
+                &mut framebuffer,
+                &uniforms,
+                skybox,
+                &camera
+            );
+        } else {
+            // Procedural fallback
+            render_skybox_fast(&mut framebuffer, &camera);
+        }
+
+        
+
+        for (idx, planet) in solar_system.planets.iter().enumerate() {
+            let position = planet.get_position();
+            let rotation = planet.get_rotation();
+            
+            uniforms.model_matrix = create_model_matrix(position, planet.scale, rotation);
+            
+            // Shader mode: Sol = 6, planetas = idx
+            uniforms.shader_mode = if planet.name == "Sol" { 
+                6 
+            } else { 
+                idx as i32 
+            };
+            
+            render(
+                &mut framebuffer,
+                &uniforms,
+                &vertex_array,
+                &light,
+                planet.vertex_shader,
+                planet.fragment_shader,
+            );
+            
+            // Anillo de Júpiter
+            if planet.name == "Júpiter" {
+                let torus_vertices = generate_torus_vertices(&uniforms);
+                render(
+                    &mut framebuffer,
+                    &uniforms,
+                    &torus_vertices,
+                    &light,
+                    vertex_shader,
+                    fragment_shader_torus,
+                );
+            }
+        }
+
+  
+        // NAVE (siempre al final)
+   
+        let ship_position = solar_system.spaceship.get_world_position();
+        let ship_rotation = solar_system.spaceship.get_world_rotation();
+
+        uniforms.model_matrix = create_model_matrix(
+            ship_position,
+            solar_system.spaceship.scale,
+            ship_rotation
+        );
+        uniforms.shader_mode = 99;
+
         render(
             &mut framebuffer,
             &uniforms,
-            &torus_vertices,
+            &ship_vertices,
             &light,
             vertex_shader,
-            fragment_shader_torus,
+            fragment_shader_papel,
         );
-    }
-}
-
-// ============================================
-// NAVE (siempre al final)
-// ============================================
-let ship_position = solar_system.spaceship.get_world_position();
-let ship_rotation = solar_system.spaceship.get_world_rotation();
-
-uniforms.model_matrix = create_model_matrix(
-    ship_position,
-    solar_system.spaceship.scale,
-    ship_rotation
-);
-uniforms.shader_mode = 99;
-
-render(
-    &mut framebuffer,
-    &uniforms,
-    &ship_vertices,
-    &light,
-    vertex_shader,
-    fragment_shader_papel,
-);
-
-framebuffer.swap_buffers(&mut window, &raylib_thread);
 
 
-
-
+        framebuffer.swap_buffers(&mut window, &raylib_thread);
         
         let mut d = window.begin_drawing(&raylib_thread);
         
@@ -423,7 +501,7 @@ framebuffer.swap_buffers(&mut window, &raylib_thread);
             Color::LIGHTGRAY,
         );
         
-        // 🆕 MOSTRAR DISTANCIA AL PLANETA MÁS CERCANO
+        // MOSTRAR DISTANCIA AL PLANETA MÁS CERCANO
         if let Some((idx, distance, name)) = solar_system.get_distance_to_closest_planet(solar_system.spaceship.position) {
             let color = if distance < 3.0 {
                 Color::RED  // ¡Peligro! Muy cerca
@@ -442,7 +520,7 @@ framebuffer.swap_buffers(&mut window, &raylib_thread);
             );
         }
         
-        // 🆕 DETECTAR COLISIÓN
+        //  DETECTAR COLISIÓN
         if let Some(planet_name) = solar_system.check_collision_with_planet(solar_system.spaceship.position, 2.0) {
             d.draw_text(
                 &format!("⚠️ COLISIÓN CON {}!", planet_name),

@@ -8,7 +8,7 @@ use crate::matrix::multiply_matrix_vector4;
 
 /// Genera los vértices de un cubo invertido gigante para el skybox
 pub fn generate_skybox_vertices() -> Vec<Vertex> {
-    let size = 100.0; // Cubo muy grande que rodea toda la escena
+    let size = 10.0; // Cubo muy grande que rodea toda la escena
     
     let positions = vec![
         // Front face (+Z)
@@ -92,11 +92,11 @@ pub fn vertex_shader_skybox(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
         transformed_position: Vector3::new(
             screen_position.x,
             screen_position.y,
-            0.9999, // Depth casi máximo
+            1.0, 
         ),
         transformed_normal: vertex.normal,
         w: clip_w,
-        view_depth: 999.0, // Muy lejos
+        view_depth: 1000.0, // Muy lejos
     }
 }
 
