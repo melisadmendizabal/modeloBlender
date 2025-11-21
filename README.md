@@ -1,126 +1,191 @@
-# 🌌 Laboratorio: Dynamic Shaders — Rama `Sol`
-
-## 🎯 Descripción
-En este laboratorio se practica el diseño procedural de una estrella (Sol) utilizando shaders en Rust.
-La superficie y animación se generan únicamente mediante funciones de ruido y variables de tiempo, sin texturas ni materiales precargados. Este laboratorio se hizo teniendo de base la rama de planetas, por lo que el sol aparece como un planeta extra.
-
-El shader combina múltiples tipos de ruido (Perlin, Simplex, Cellular y Fractal Brownian Motion) para simular:
-- Turbulencias solares
-- Llamaradas energéticas
-- Manchas solares
-- Pulsaciones luminosas
-- Distorsiones superficiales (flare)
-El resultado es una animación continua y cíclica, controlada mediante una variable uniforme de tiempo (uniforms.time).
+# 🌌 Proyecto — Rama `SpaceTravel`
+Un motor de renderizado 3D completamente desde cero que simula el sistema solar con física orbital, shaders procedurales personalizados y navegación espacial interactiva.
 ---
-
-## 🪐 Sol
-(se mira bien trabado porque le tuve que bajar calidad al vídeo para poder subirlo)
-
-
-
-![Sol (1)](https://github.com/user-attachments/assets/5cca31c3-cecb-4b1f-a973-1fc974d4e446)
-
-
-
----
-## ⚙️ Estructura general
-
-El shader está dividido en dos etapas principales:
-1. Vertex Shader (vertex_shader_star): Deforma la geometría de la esfera base para simular turbulencias y llamaradas solares.
-2. Fragment Shader (fragment_shader_star y fragment_shader_star_flares)
-Calcula el color, emisión y brillo de cada fragmento según su “temperatura” y la actividad solar simulada.
-
----
-## 🧠 Variables y Uniforms
--  `uniforms.time`: Tiempo en segundos desde el inicio del programa. Controla toda la animación (ruidos, pulsaciones, flares, etc.). 
-- `uniforms.model_matrix`, `view_matrix`, `projection_matrix`, `viewport_matrix`: Matrices estándar para transformar el modelo de espacio local a pantalla. 
-- `vertex.position`, `vertex.normal`: Posición y normal del vértice original. Se modifican en el vertex shader según ruido.
-
----
-##🌋 Funciones de ruido implementadas
-
-Cada tipo de ruido cumple un propósito visual distinto en la simulación del sol:
-
-1. Perlin Noise
-   Uso: Turbulencias suaves y base de movimiento.
-   Efecto visual: Ondas orgánicas que fluyen sobre la superficie, simulando el plasma solar.
-   Implementación: Se interpola suavemente entre valores pseudoaleatorios para obtener transiciones continuas.
-
-2. Simplex Noise
-   Uso: Granulación solar fina (textura de superficie).
-   Efecto visual: Añade pequeños detalles que dan sensación de movimiento granular, similar a la fotosfera.
-
-4. Cellular / Worley Noise
-   Uso: Manchas solares.
-   Efecto visual: Crea regiones de menor intensidad o “puntos fríos” que aparecen y desaparecen dinámicamente.
-
-4. Fractal Brownian Motion (FBM)
-   Uso: Combina múltiples octavas de Perlin para formar patrones más ricos.
-   Efecto visual: Superpone diferentes escalas de ruido, logrando profundidad visual y movimiento natural.
-
----
-## 💫 Vertex Shader: vertex_shader_star
-
-Propósito:
-Es un vertex shader adicional al que se usa con lo planetas, ya que deforma la superficie de la esfera base según valores de ruido dependientes del tiempo, generando picos o depresiones que simulan llamaradas y vibración solar. 
-
-Funcionamiento:
-- Calcula coordenadas esféricas del vértice.
-- Evalúa funciones de ruido (Perlin + FBM) para obtener una intensidad de turbulencia.
-- Aplica una escala variable al radio del vértice (scale = 1.0 + distortion).
-- Deforma también la normal para lograr un efecto de luz dinámico.
-
-Efecto visible:
-La esfera “late” y se expande en zonas aleatorias, como una estrella activa.
+link del video:
+[🎥 Ver demostración en video](https://uvggt-my.sharepoint.com/:v:/g/personal/men23778_uvg_edu_gt/IQDcpLMJ4W0pTIVpLqWlkuJlARNVhSSPX_lPgFupq5PdBpE?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%3D&e=2rZU8m)
+<img width="1296" height="897" alt="image" src="https://github.com/user-attachments/assets/28218eff-c117-4515-84c5-388094c16937" />
 
 ---
 
-## ⌨️ Controles y Atajos de Teclado
 
-Durante la ejecución del renderer:
+## 🎯 Descripción del Proyecto
 
-| Tecla | Acción |
-|:------:|:-------|
-| **1** | Cambia al **Planeta Rocoso** |
-| **2** | Cambia al **Gigante Gaseoso** |
-| **3** | Cambia al **Planeta Fresa ** |
-| **4** | Cambia al **Planeta Anillos** |
-| **5** | Cambia al **Planeta Rojo** |
-| **R** | Reinicia rotación del planeta |
-| **↑ / ↓** | Aumentar o disminuir velocidad de rotación |
-| **← / →** | Cambiar tipo de shader activo (variantes) |
-| **A** | Activar/desactivar **anillos procedurales** |
-| **ESPACIO** | Detiene/Activa la rotación |
+Este proyecto implementa un **software renderer completo** (sin usar APIs como OpenGL/Vulkan) que renderiza un sistema solar funcional. Cada componente del pipeline gráfico fue programado manualmente: transformaciones matriciales, rasterización de triángulos, z-buffering, y shaders procedurales para cada cuerpo celeste.
 
-> Todos los planetas giran sobre su eje, y las animaciones dependen del tiempo (`uniforms.time`).
+**Lo destacado:** No se usaron texturas externas. Toda la apariencia visual de los planetas proviene de cálculos matemáticos en tiempo real usando funciones de ruido, gradientes y composición por capas.
 
 ---
 
-## ⚙️ Parámetros (Uniforms) y Documentación Técnica general de planetas y estrella
+## ✨ Características Principales
 
-| Uniform | Tipo | Descripción |
-|----------|------|-------------|
-| `time` | `f32` | Tiempo acumulado (usado para animaciones, rotación, transiciones de color, ruido dinámico). |
-| `light_dir` | `Vector3` | Dirección de la luz principal usada para iluminación difusa. |
-| `view_dir` | `Vector3` | Dirección del observador (para efectos de Fresnel y resplandor atmosférico). |
-| `model_matrix` | `Matrix` | Transformaciones del planeta (rotación, traslación). |
-| `normal_matrix` | `Matrix` | Corrección de normales tras transformaciones. |
-| `camera_position` | `Vector3` | Posición de la cámara usada en algunos efectos de luz especular. |
+### 🪐 Sistema Solar 
+**6 cuerpos celestes únicos:**
+- ☀️ **Sol**: Superficie estelar animada con llamaradas solares, manchas y turbulencias usando Perlin Noise, Simplex y ruido celular
+- 🌑 **Mercurio**: Planeta rocoso con cráteres generados por normal mapping procedural y oclusión ambiental
+- 🌫️ **Venus**: Atmósfera densa con múltiples capas de nubes dinámicas que cambian de color cada segundo
+- 🍓 **Tierra**: Diseño creativo "tipo fresa" con base texturizada, semillas doradas distribuidas proceduralmente y hoja verde polar
+- 🔴 **Marte**: Superficie marciana con tormentas de arena animadas, casquetes polares de hielo, venas minerales y resplandor atmosférico
+- 🪐 **Júpiter**: Gigante gaseoso con bandas de colores rotantes y un **anillo toroidal generado completamente en vertex shader** (sin modelo 3D)
 
-Cada `fragment shader` recibe un `Fragment` estructurado con:
-- `world_position`: posición 3D del fragmento en el espacio global.
-- `normal`: vector normal en el punto.
-- `uv`: coordenadas opcionales para distorsión o proyección esférica.
+Cada planeta rota sobre su eje y orbita alrededor del Sol siguiendo el plano eclíptico.
 
-La salida (`FragmentOutput`) siempre contiene:
-- `color`: valor RGB calculado en base a capas y luz.
-- `alpha`: opacidad (para blending entre capas).
+### 🚀 Nave Espacial 
+- Modelo 3D personalizado de **barco de papel** que sigue a la cámara
+- Sistema de física espacial con 6 grados de libertad (yaw, pitch, roll)
+- Cámara third-person dinámica con offset configurable
+
+### 🌠 Skybox Estelar 
+- Campo de estrellas envolvente renderizado al fondo
+- Soporte para texturas cubemap o generación procedural
+- Optimizado para renderizarse solo en píxeles vacíos
+
+### 🎮 Movimiento 3D Completo 
+- Control total de la cámara en 3 ejes
+- Rotación suave con protección contra gimbal lock
+- Movimiento en 6 direcciones con física espacial realista
 
 ---
+
+## 🎨 Sistema de Shaders Procedurales
+
+Todos los efectos visuales se generan matemáticamente sin texturas externas:
+
+### Técnicas Implementadas
+
+**Funciones de Ruido:**
+- **Perlin Noise**: Turbulencias orgánicas y movimiento de plasma
+- **Simplex Noise**: Detalles finos y granulación de superficie
+- **Cellular (Worley) Noise**: Manchas solares y patrones celulares
+- **FBM (Fractal Brownian Motion)**: Combinación de múltiples octavas para complejidad natural
+
+**Efectos Visuales:**
+- **Normal Mapping**: Relieve visual sin geometría adicional (cráteres de Mercurio)
+- **Alpha Blending por Capas**: Hasta 5 capas combinadas (terreno, nubes, hielo, minerales, atmósfera)
+- **Vertex Deformation**: Generación de geometría toroidal para anillos en tiempo real
+- **Gradientes de Temperatura**: Mapeo de temperatura a color simulando espectro de cuerpo negro
+- **Efecto Fresnel**: Resplandor atmosférico en bordes planetarios
+
+### Ejemplos de Composición
+
+**Marte (5 capas):**
+1. Terreno base → paleta de rojos marcianos con variación geológica
+2. Tormentas de arena → patrones dinámicos que se mueven con el tiempo
+3. Casquetes polares → hielo en polos (Y > ±0.6) con bordes irregulares
+4. Venas minerales → oro/cian distribuido pseudo-aleatoriamente
+5. Resplandor atmosférico → efecto Fresnel anaranjado en los bordes
+
+**Venus (2 capas con animación):**
+1. Rayas de colores → paleta que rota entre 5 combinaciones cada segundo
+2. Nubes procedurales → 3 octavas de ruido con movimiento independiente y transparencia
+
+---
+
+## 🏗️ Arquitectura del Renderer
+
+### Pipeline Gráfico Completo
+
+El motor implementa cada etapa desde cero:
+
+1. **Vertex Shader** → Transformaciones Model-View-Projection con cálculo de profundidad
+2. **Primitive Assembly** → Agrupación de vértices en triángulos
+3. **Rasterization** → Coordenadas baricéntricas con corrección de perspectiva
+4. **Fragment Shader** → Shaders procedurales personalizados por planeta
+5. **Depth Test & Blending** → Z-buffer en view space + alpha blending
+
+### Componentes Clave
+
+- **Framebuffer (`framebuffer.rs`)**: Color buffer RGB + Depth buffer float + alpha blending
+- **Transformaciones (`matrix.rs`)**: Matrices 4x4 para Model, View, Projection y Viewport
+- **Rasterización (`triangle.rs`)**: Interpolación baricéntrica con corrección de perspectiva
+- **Sistema Solar (`sistema_solar.rs`)**: Física orbital, colisiones y lógica de la nave
+- **Shaders**: 6 archivos especializados, uno por tipo de cuerpo celeste
+
+---
+
+## 🎮 Controles
+
+### Movimiento de la Nave
+- **W/S**: Retroceder/Avanzar
+- **A/D**: Izquierda/Derecha
+- **↑/↓**: Subir/Bajar
+
+### Otros
+- **H**: Resetear nave a posición inicial
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── main.rs                    # Loop principal y configuración
+├── camera.rs                  # Sistema de cámara 3D
+├── framebuffer.rs             # Buffers de color y profundidad
+├── matrix.rs                  # Matemáticas de transformaciones
+├── triangle.rs                # Rasterización de triángulos
+├── shaders.rs                 # Dispatcher de shaders
+├── shader_sol.rs              # Shader estelar (Sol)
+├── shader_rocoso.rs           # Shader de cráteres (Mercurio)
+├── shader_gaseoso.rs          # Shader de atmósfera (Venus)
+├── shader_strawberry.rs       # Shader creativo (Tierra)
+├── shader_rojo.rs             # Shader marciano (Marte)
+├── shader_anillo.rs           # Shader toroidal (Júpiter)
+├── sistema_solar.rs           # Física orbital y colisiones
+├── skybox.rs                  # Fondo espacial
+├── texture.rs                 # Cargador de texturas (skybox)
+└── obj.rs                     # Cargador de modelos .obj
+
+Models/
+├── sphere.obj                 # Esfera base para planetas
+└── barcoPapel.obj            # Modelo de la nave
+
+Textures/skybox/              # Texturas opcionales del skybox
+```
+
+
+
+---
+
+## 🎓 Detalles Técnicos Destacados
+
+### Optimizaciones Implementadas
+- **Early Z-test**: Descarte rápido de fragmentos ocultos
+- **Bounding box rasterization**: Reduce píxeles testeados por triángulo
+- **Skybox inteligente**: Solo se dibuja en depth = INFINITY
+
+### Innovaciones
+- **Shader Layering System**: Hasta 5 capas con alpha blending automático
+- **Hybrid Normal Mapping**: Combina altura procedural con perturbación de normales
+- **Dynamic Shader Selection**: Cada planeta usa su propio par vertex/fragment
+
+---
+
+## 📊 Performance
+
+**Configuración de prueba:**
+- Resolución: 1300×900 pixels
+- Target: 60 FPS
+- ~50,000 vértices por frame
+- 6 planetas + nave + skybox
+
+---
+
+## 🌟 Créditos
+
+**Desarrollado por:** Andrea Elías  
+**Curso:** Gráficos por Computadora  
+**Tecnologías:** Rust, Raylib, matemáticas personalizadas  
+
+### Librerías
+- `raylib` - Windowing y contexto
+- `tobj` - Carga de modelos .obj
+- `image` - Procesamiento de texturas
+
+---
+
 
 ## 🛠️ Requisitos
 - Rust
-- raylib-rs
 
 ## 🔧 Instalación y ejecución
 
